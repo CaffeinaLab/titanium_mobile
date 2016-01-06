@@ -1048,7 +1048,7 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
 	[userActivityDict setObject:dict forKey:@"UIApplicationLaunchOptionsUserActivityKey"];
 	[launchOptions setObject:userActivityDict forKey:UIApplicationLaunchOptionsUserActivityDictionaryKey];
 	
-    if (appBooted) {
+    if (appBooted){
         [[NSNotificationCenter defaultCenter] postNotificationName:kTiContinueActivity object:self userInfo:dict];
     } else {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
