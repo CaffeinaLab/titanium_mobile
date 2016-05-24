@@ -294,6 +294,43 @@ typedef void(^EKEventStoreRequestAccessCompletionHandler)(BOOL granted, NSError 
     return [NSNumber numberWithInteger:result];
 }
 
+-(TiCalendarCalendar*) createCalendar:(id)args
+{
+    ENSURE_SINGLE_ARG(args, NSDictionary);
+    
+    NSString* title = nil;
+    ENSURE_ARG_FOR_KEY(title, args, @"title", NSString);
+
+    EKEventStore* ourStore = [self store];
+    EKCalendar *calendar = [EKCalendar calendarWithEventStore:ourStore];
+
+    calendar.title = title;
+    calendar.source = [[ourStore defaultCalendarForNewEvents] source];
+
+    TiCalendarCalendar* tiCalendar = [[[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar module:self] autorelease];
+    return tiCalendar;
+}
+
+-(BOOL) deleteCalendarById:(id)arg
+{
+    ENSURE_SINGLE_ARG(arg, NSString);
+
+    EKEventStore* ourStore = [self store];
+    EKCalendar *calendar = [ourStore calendarWithIdentifier:arg];
+
+    if (calendar) {
+        NSError *error = nil;
+        BOOL result = [ourStore removeCalendar:calendar commit:YES error:&error];
+        if (result) {
+            return YES;
+        } else {
+            NSLog(@"Deleting calendar failed: %@.", error);
+            return NO;
+        }
+    }
+}
+
+
 #pragma mark - Properties
 
 MAKE_SYSTEM_PROP(STATUS_NONE,EKEventStatusNone);
