@@ -17,11 +17,8 @@ import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.TiC;
-<<<<<<< HEAD
-=======
 import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.util.TiConvert;
->>>>>>> 98f764f662... Added create calendar
 
 import android.Manifest;
 import android.app.Activity;
@@ -32,11 +29,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.text.format.DateUtils;
 
-<<<<<<< HEAD
-@Kroll.proxy(parentModule = CalendarModule.class)
-public class CalendarProxy extends KrollProxy
-{
-=======
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
@@ -45,7 +37,6 @@ import android.provider.CalendarContract;
 
 @Kroll.proxy(parentModule=CalendarModule.class)
 public class CalendarProxy extends KrollProxy {
->>>>>>> 98f764f662... Added create calendar
 
 	protected String id, name;
 	private static final String TAG = "Calendar";
