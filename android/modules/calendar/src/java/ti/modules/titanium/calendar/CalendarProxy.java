@@ -17,6 +17,11 @@ import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiApplication;
 import org.appcelerator.titanium.TiC;
+<<<<<<< HEAD
+=======
+import org.appcelerator.titanium.TiContext;
+import org.appcelerator.titanium.util.TiConvert;
+>>>>>>> 98f764f662... Added create calendar
 
 import android.Manifest;
 import android.app.Activity;
@@ -27,9 +32,20 @@ import android.net.Uri;
 import android.os.Build;
 import android.text.format.DateUtils;
 
+<<<<<<< HEAD
 @Kroll.proxy(parentModule = CalendarModule.class)
 public class CalendarProxy extends KrollProxy
 {
+=======
+import android.content.ContentValues;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.CalendarContract;
+
+@Kroll.proxy(parentModule=CalendarModule.class)
+public class CalendarProxy extends KrollProxy {
+>>>>>>> 98f764f662... Added create calendar
 
 	protected String id, name;
 	private static final String TAG = "Calendar";
@@ -240,6 +256,28 @@ public class CalendarProxy extends KrollProxy
 	{
 		return hidden;
 	}
+
+	@Kroll.method
+	public static String create(KrollDict data) 
+	{
+		ContentResolver contentResolver = TiApplication.getInstance().getContentResolver();
+		if (!hasCalendarPermissions()) {
+			return null;
+		}
+
+		ContentValues calendarValues = new ContentValues();
+
+		calendarValues.put("account_name", TiApplication.getInstance().getPackageName());
+		calendarValues.put("account_type", "LOCAL");
+		calendarValues.put("name", TiConvert.toString(data, "name"));
+		calendarValues.put("calendar_displayName", TiConvert.toString(data, "name"));
+
+		Uri calendarUri = contentResolver.insert(Uri.parse(CalendarProxy.getBaseCalendarUri() + "/calendars"), calendarValues);
+		Log.d("TiEvents", "created calendar with uri: " + calendarUri.getLastPathSegment(), Log.DEBUG_MODE);
+
+		return calendarUri.getLastPathSegment();
+	}
+
 
 	@Override
 	public String getApiName()
