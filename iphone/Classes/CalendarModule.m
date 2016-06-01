@@ -323,7 +323,7 @@ typedef void(^EKEventStoreRequestAccessCompletionHandler)(BOOL granted, NSError 
         }
     }
 
-    if (theSource) {
+    if (theSource == nil) {
         DebugLog(@"Could not determine source");
         return nil;
     }
