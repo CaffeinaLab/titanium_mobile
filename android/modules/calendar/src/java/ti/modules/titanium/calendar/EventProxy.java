@@ -42,7 +42,7 @@ public class EventProxy extends KrollProxy
 	public static final int VISIBILITY_PRIVATE = 2;
 	public static final int VISIBILITY_PUBLIC = 3;
 
-	protected String id, title, description, location;
+	protected String id, title, description, location, rrule;
 	protected Date begin, end;
 	protected boolean allDay, hasAlarm = true, hasExtendedProperties = true;
 	protected int status, visibility;
@@ -97,11 +97,9 @@ public class EventProxy extends KrollProxy
 			visibility = "visibility";
 		}
 
-		Cursor eventCursor = contentResolver.query(builder.build(),
-												   new String[] { "event_id", "title", "description", "eventLocation",
-																  "begin", "end", "allDay", "hasAlarm", "eventStatus",
-																  visibility, Events.RRULE, Events.CALENDAR_ID },
-												   query, queryArgs, "startDay ASC, startMinute ASC");
+		Cursor eventCursor = contentResolver.query(builder.build(), new String[] { "event_id", "title", "description",
+			"eventLocation", "begin", "end", "allDay", "hasAlarm", "eventStatus", visibility, "rrule" }, query, queryArgs,
+			"startDay ASC, startMinute ASC");
 
 		if (eventCursor == null) {
 			Log.w(TAG, "Unable to get any results when pulling events by date range");
@@ -121,16 +119,7 @@ public class EventProxy extends KrollProxy
 			event.hasAlarm = !eventCursor.getString(7).equals("0");
 			event.status = eventCursor.getInt(8);
 			event.visibility = eventCursor.getInt(9);
-			// Guarding against Cursor implementations which would throw an exception
-			// instead of returning null if no recurrence rule is added to the event
-			String recurrenceRule = null;
-			try {
-				recurrenceRule = eventCursor.getString(10);
-			} catch (Exception e) {
-				Log.w(TAG, "Trying to get a recurrence rule for an event without one.");
-				e.printStackTrace();
-			}
-			event.setRecurrenceRules(recurrenceRule, eventCursor.getInt(11));
+			event.rrule = eventCursor.getString(10);
 			events.add(event);
 		}
 
@@ -170,11 +159,9 @@ public class EventProxy extends KrollProxy
 			visibility = "visibility";
 		}
 
-		Cursor eventCursor = contentResolver.query(uri,
-												   new String[] { "_id", "title", "description", "eventLocation",
-																  "dtstart", "dtend", "allDay", "hasAlarm",
-																  "eventStatus", visibility, "hasExtendedProperties" },
-												   query, queryArgs, orderBy);
+		Cursor eventCursor = contentResolver.query(uri, new String[] { "_id", "title", "description", "eventLocation",
+			"dtstart", "dtend", "allDay", "hasAlarm", "eventStatus", visibility, "hasExtendedProperties", "rrule" }, query,
+			queryArgs, orderBy);
 
 		while (eventCursor.moveToNext()) {
 			EventProxy event = new EventProxy();
@@ -189,6 +176,7 @@ public class EventProxy extends KrollProxy
 			event.status = eventCursor.getInt(8);
 			event.visibility = eventCursor.getInt(9);
 			event.hasExtendedProperties = !eventCursor.getString(10).equals("0");
+			event.rrule = eventCursor.getString(11);
 
 			events.add(event);
 		}
@@ -202,6 +190,7 @@ public class EventProxy extends KrollProxy
 		if (!CalendarProxy.hasCalendarPermissions()) {
 			return null;
 		}
+
 		EventProxy event = new EventProxy();
 
 		ContentValues eventValues = new ContentValues();
@@ -255,6 +244,11 @@ public class EventProxy extends KrollProxy
 		if (data.containsKey("hasAlarm")) {
 			event.hasAlarm = TiConvert.toBoolean(data, "hasAlarm");
 			eventValues.put("hasAlarm", event.hasAlarm ? 1 : 0);
+		}
+
+		if (data.containsKey("rrule")) {
+			event.rrule = TiConvert.toString(data, "rrule");
+			eventValues.put("rrule", event.rrule);
 		}
 
 		Uri eventUri = contentResolver.insert(Uri.parse(CalendarProxy.getBaseCalendarUri() + "/events"), eventValues);
@@ -537,9 +531,13 @@ public class EventProxy extends KrollProxy
 		return lastDate;
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
+	public Date getRrule()
+	{
+		return rrule;
+	}
+
+	@Kroll.getProperty @Kroll.method
 	public KrollDict getExtendedProperties()
 	// clang-format on
 	{
