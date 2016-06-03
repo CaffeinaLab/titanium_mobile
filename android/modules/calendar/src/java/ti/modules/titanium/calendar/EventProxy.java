@@ -532,7 +532,7 @@ public class EventProxy extends KrollProxy
 	}
 
 	@Kroll.getProperty @Kroll.method
-	public Date getRrule()
+	public String getRrule()
 	{
 		return rrule;
 	}
