@@ -174,7 +174,8 @@
   return [TiCalendarEvent convertEvents:events withContext:[self executionContext] calendar:[self calendar] module:module];
 }
 
-- (NSArray *)getEventsInDate:(id)arg
+
+-(NSArray*)getEventsBetweenDates:(id)args
 {
   ENSURE_ARG_COUNT(arg, 3);
 
