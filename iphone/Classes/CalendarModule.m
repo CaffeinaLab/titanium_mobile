@@ -282,7 +282,7 @@
   return [NSNumber numberWithInteger:result];
 }
 
--(TiCalendarCalendar*) createCalendar:(id)args
+-(NSString*) createCalendar:(id)args
 {
     ENSURE_SINGLE_ARG(args, NSDictionary);
     
