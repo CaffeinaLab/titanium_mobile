@@ -270,6 +270,7 @@
 - (void)viewDidAppear:(BOOL)animated;     // Called when the view has been fully transitioned onto the screen. Default does nothing
 {
 	[self updateTitleView];
+    [self updateHidesBars];
 	[super viewDidAppear:animated];
 }
 
@@ -886,6 +887,45 @@
 	
 }
 
+-(void)setHidesBarsOnSwipe:(id)value
+{
+    [self replaceValue:value forKey:@"hidesBarsOnSwipe" notification:NO];
+    [self updateHidesBars];
+}
+
+-(void)setHidesBarsOnTap:(id)value
+{
+    [self replaceValue:value forKey:@"hidesBarsOnTap" notification:NO];
+    [self updateHidesBars];
+}
+
+-(void)setHidesBarsWhenVerticallyCompact:(id)value
+{
+    [self replaceValue:value forKey:@"hidesBarsWhenVerticallyCompact" notification:NO];
+    [self updateHidesBars];
+}
+
+-(void)setHidesBarsWhenKeyboardAppears:(id)value
+{
+    [self replaceValue:value forKey:@"hidesBarsWhenKeyboardAppears" notification:NO];
+    [self updateHidesBars];
+}
+
+-(void)updateHidesBars
+{
+    if ([TiUtils isIOS8OrGreater]) {
+        TiThreadPerformOnMainThread(^{
+            if ((controller != nil) && ([controller navigationController] != nil)) {
+                UINavigationController *ourNC = [controller navigationController];
+                ourNC.hidesBarsOnSwipe = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsOnSwipe"] def:NO];
+                ourNC.hidesBarsOnTap = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsOnTap"] def:NO];
+                ourNC.hidesBarsWhenVerticallyCompact = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsWhenVerticallyCompact"] def:NO];
+                ourNC.hidesBarsWhenKeyboardAppears = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsWhenKeyboardAppears"] def:NO];
+            }
+        }, NO);
+    }
+}
+
 #define SETPROP(m,x) \
 {\
   id value = [self valueForKey:m]; \
@@ -935,6 +975,10 @@ else{\
     SETPROP(@"navTintColor",setNavTintColor);
     SETPROP(@"translucent",setTranslucent);
     SETPROP(@"tabBarHidden",setTabBarHidden);
+    SETPROP(@"hidesBarsOnSwipe",setHidesBarsOnSwipe);
+    SETPROP(@"hidesBarsOnTap", setHidesBarsOnTap);
+    SETPROP(@"hidesBarsWhenVerticallyCompact",setHidesBarsWhenVerticallyCompact);
+    SETPROP(@"hidesBarsWhenKeyboardAppears", setHidesBarsWhenKeyboardAppears);
     SETPROPOBJ(@"toolbar",setToolbar);
     [self updateBarImage];
     [self updateNavButtons];
