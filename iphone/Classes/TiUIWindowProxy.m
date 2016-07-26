@@ -283,8 +283,9 @@
 
 - (void)viewDidAppear:(BOOL)animated; // Called when the view has been fully transitioned onto the screen. Default does nothing
 {
-  [self updateTitleView];
-  [super viewDidAppear:animated];
+	[self updateTitleView];
+    [self updateHidesBars];
+	[super viewDidAppear:animated];
 }
 
 - (void)viewWillDisappear:(BOOL)animated; // Called when the view is dismissed, covered or otherwise hidden. Default does nothing
@@ -1030,29 +1031,173 @@
 
 - (UIEdgeInsets)tabGroupEdgeInsetsForSafeAreaInset:(UIEdgeInsets)safeAreaInset
 {
-  UIEdgeInsets edgeInsets = UIEdgeInsetsZero;
-  TiWindowProxy *windowProxy = nil;
-  if ([self.tabGroup isKindOfClass:[TiWindowProxy class]]) {
-    windowProxy = (TiWindowProxy *)self.tabGroup;
-  }
-  UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
-  if (!UIInterfaceOrientationIsPortrait(orientation)) {
-    if (windowProxy.isMasterWindow) {
-      edgeInsets.left = safeAreaInset.left;
-    } else if (windowProxy.isDetailWindow) {
-      edgeInsets.right = safeAreaInset.right;
-    } else {
-      edgeInsets.left = safeAreaInset.left;
-      edgeInsets.right = safeAreaInset.right;
+	ENSURE_TYPE_OR_NIL(items,NSArray);
+	if (properties == nil)
+	{
+        properties = [self valueForKey:@"toolbarSettings"];
     }
-  }
-  if ([TiUtils boolValue:[self valueForUndefinedKey:@"navBarHidden"] def:NO]) {
-    edgeInsets.top = safeAreaInset.top;
-  }
-  if ([TiUtils boolValue:[self valueForUndefinedKey:@"tabBarHidden"] def:NO]) {
-    edgeInsets.bottom = safeAreaInset.bottom;
-  }
-  return edgeInsets;
+    else 
+	{
+        [self setValue:properties forKey:@"toolbarSettings"];
+    }
+	NSArray * oldarray = [self valueForUndefinedKey:@"toolbar"];
+	if((id)oldarray == [NSNull null])
+	{
+		oldarray = nil;
+	}
+	for(TiViewProxy * oldProxy in oldarray)
+	{
+		if(![items containsObject:oldProxy])
+		{
+			[self forgetProxy:oldProxy];
+		}
+	}
+	for (TiViewProxy *proxy in items)
+	{
+		[self rememberProxy:proxy];
+	}
+	[self replaceValue:items forKey:@"toolbar" notification:NO];
+	TiThreadPerformOnMainThread( ^{
+		if (shouldUpdateNavBar && controller!=nil && [controller navigationController] != nil)
+		{
+			NSArray *existing = [controller toolbarItems];
+			UINavigationController * ourNC = [controller navigationController];
+			if (existing!=nil)
+			{
+				for (id current in existing)
+				{
+					if ([current respondsToSelector:@selector(proxy)])
+					{
+						TiViewProxy* p = (TiViewProxy*)[current performSelector:@selector(proxy)];
+						[p removeBarButtonView];
+					}
+				}
+			}
+			NSMutableArray * array = [[NSMutableArray alloc] initWithObjects:nil];
+			for (TiViewProxy *proxy in items)
+			{
+				if([proxy supportsNavBarPositioning])
+				{
+					UIBarButtonItem *item = [proxy barButtonItem];
+					[array addObject:item];
+				}
+			}
+			hasToolbar = (array != nil && [array count] > 0) ? YES : NO ;
+			BOOL translucent = [TiUtils boolValue:@"translucent" properties:properties def:YES];
+			BOOL animated = [TiUtils boolValue:@"animated" properties:properties def:hasToolbar];
+			TiColor* toolbarColor = [TiUtils colorValue:@"barColor" properties:properties];
+			UIColor* barColor = [TiUtils barColorForColor:toolbarColor];
+			[controller setToolbarItems:array animated:animated];
+			[ourNC setToolbarHidden:(hasToolbar == NO ? YES : NO) animated:animated];
+			[ourNC.toolbar setTranslucent:translucent];
+			UIColor* tintColor = [[TiUtils colorValue:@"tintColor" properties:properties] color];
+			[ourNC.toolbar setBarTintColor:barColor];
+			[ourNC.toolbar setTintColor:tintColor];
+			
+			[array release];
+			
+		}
+	},YES);
+	
+}
+
+-(void)setHidesBarsOnSwipe:(id)value
+{
+    [self replaceValue:value forKey:@"hidesBarsOnSwipe" notification:NO];
+    [self updateHidesBars];
+}
+
+-(void)setHidesBarsOnTap:(id)value
+{
+    [self replaceValue:value forKey:@"hidesBarsOnTap" notification:NO];
+    [self updateHidesBars];
+}
+
+-(void)setHidesBarsWhenVerticallyCompact:(id)value
+{
+    [self replaceValue:value forKey:@"hidesBarsWhenVerticallyCompact" notification:NO];
+    [self updateHidesBars];
+}
+
+-(void)setHidesBarsWhenKeyboardAppears:(id)value
+{
+    [self replaceValue:value forKey:@"hidesBarsWhenKeyboardAppears" notification:NO];
+    [self updateHidesBars];
+}
+
+-(void)updateHidesBars
+{
+    if ([TiUtils isIOS8OrGreater]) {
+        TiThreadPerformOnMainThread(^{
+            if ((controller != nil) && ([controller navigationController] != nil)) {
+                UINavigationController *ourNC = [controller navigationController];
+                ourNC.hidesBarsOnSwipe = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsOnSwipe"] def:NO];
+                ourNC.hidesBarsOnTap = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsOnTap"] def:NO];
+                ourNC.hidesBarsWhenVerticallyCompact = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsWhenVerticallyCompact"] def:NO];
+                ourNC.hidesBarsWhenKeyboardAppears = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsWhenKeyboardAppears"] def:NO];
+            }
+        }, NO);
+    }
+}
+
+
+#define SETPROP(m,x) \
+{\
+  id value = [self valueForKey:m]; \
+  if (value!=nil)\
+  {\
+	[self x:(value==[NSNull null]) ? nil : value];\
+  }\
+  else{\
+	[self replaceValue:nil forKey:m notification:NO];\
+  }\
+}\
+
+#define SETPROPOBJ(m,x) \
+{\
+id value = [self valueForKey:m]; \
+if (value!=nil)\
+{\
+if ([value isKindOfClass:[TiComplexValue class]])\
+{\
+     TiComplexValue *cv = (TiComplexValue*)value;\
+     [self x:(cv.value==[NSNull null]) ? nil : cv.value withObject:cv.properties];\
+}\
+else\
+{\
+	[self x:(value==[NSNull null]) ? nil : value withObject:nil];\
+}\
+}\
+else{\
+[self replaceValue:nil forKey:m notification:NO];\
+}\
+}\
+
+-(void)setupWindowDecorations
+{
+    if ((controller == nil) || ([controller navigationController] == nil)) {
+        return;
+    }
+    
+    [[controller navigationController] setToolbarHidden:!hasToolbar animated:YES];
+    //Need to clear title for titleAttributes to apply correctly on iOS6.
+    [[controller navigationItem] setTitle:nil];
+    SETPROP(@"titleAttributes",setTitleAttributes);
+    SETPROP(@"title",setTitle);
+    SETPROP(@"titlePrompt",setTitlePrompt);
+    [self updateTitleView];
+    SETPROP(@"barColor",setBarColor);
+    SETPROP(@"navTintColor",setNavTintColor);
+    SETPROP(@"translucent",setTranslucent);
+    SETPROP(@"tabBarHidden",setTabBarHidden);
+    SETPROP(@"hidesBarsOnSwipe",setHidesBarsOnSwipe);
+    SETPROP(@"hidesBarsOnTap", setHidesBarsOnTap);
+    SETPROP(@"hidesBarsWhenVerticallyCompact",setHidesBarsWhenVerticallyCompact);
+    SETPROP(@"hidesBarsWhenKeyboardAppears", setHidesBarsWhenKeyboardAppears);
+    SETPROPOBJ(@"toolbar",setToolbar);
+    [self updateBarImage];
+    [self updateNavButtons];
+    [self refreshBackButton];
 }
 
 - (UIEdgeInsets)navigationGroupEdgeInsetsForSafeAreaInset:(UIEdgeInsets)safeAreaInset
