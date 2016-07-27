@@ -21,6 +21,7 @@
 	BOOL contextReady;
 	BOOL shouldUpdateNavBar;
 	UIImageView *barImageView;
+    UIView *statusbarBg;
 	NSURL *oldBaseURL;
 	id latch;
 }

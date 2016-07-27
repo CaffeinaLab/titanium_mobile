@@ -363,6 +363,23 @@
     }
 }
 
+-(void)setStatusBarBackgroundColor:(id)colorString
+{
+    ENSURE_UI_THREAD(setStatusBarBackgroundColor, colorString);
+    NSString *color = [TiUtils stringValue:colorString];
+    [self replaceValue:color forKey:@"statusBarBackgroundColor" notification:NO];
+    if (controller != nil && [controller navigationController] != nil)
+    {
+        if (statusbarBg == nil) {
+            statusbarBg = [[UIView alloc] initWithFrame:[UIApplication sharedApplication].statusBarFrame];
+            [[controller navigationController].view addSubview:statusbarBg];
+        }
+        TiColor* newColor = [TiUtils colorValue:color];
+        statusbarBg.backgroundColor = [newColor _color];
+    }
+}
+
+
 -(void)setTitleAttributes:(id)args
 {
     ENSURE_UI_THREAD(setTitleAttributes,args);
@@ -967,6 +984,7 @@ else{\
     SETPROP(@"titlePrompt",setTitlePrompt);
     [self updateTitleView];
     SETPROP(@"barColor",setBarColor);
+    SETPROP(@"statusBarBackgroundColor",setStatusBarBackgroundColor);
     SETPROP(@"navTintColor",setNavTintColor);
     SETPROP(@"translucent",setTranslucent);
     SETPROP(@"tabBarHidden",setTabBarHidden);
