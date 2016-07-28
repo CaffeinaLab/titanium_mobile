@@ -922,7 +922,7 @@
 
 -(void)setHidesBarsOnSwipe:(id)value
 {
-    ENSURE_TYPE(value, NSNumber);
+    ENSURE_TYPE_OR_NIL(value, NSNumber);
 
     [self replaceValue:value forKey:@"hidesBarsOnSwipe" notification:NO];
 
@@ -938,7 +938,7 @@
 
 -(void)setHidesBarsOnTap:(id)value
 {
-    ENSURE_TYPE(value, NSNumber);
+    ENSURE_TYPE_OR_NIL(value, NSNumber);
 
     [self replaceValue:value forKey:@"hidesBarsOnTap" notification:NO];
     
@@ -954,7 +954,7 @@
 
 -(void)setHidesBarsWhenVerticallyCompact:(id)value
 {
-    ENSURE_TYPE(value, NSNumber);
+    ENSURE_TYPE_OR_NIL(value, NSNumber);
 
     [self replaceValue:value forKey:@"hidesBarsWhenVerticallyCompact" notification:NO];
 
@@ -970,7 +970,7 @@
 
 -(void)setHidesBarsWhenKeyboardAppears:(id)value
 {
-    ENSURE_TYPE(value, NSNumber);
+    ENSURE_TYPE_OR_NIL(value, NSNumber);
 
     [self replaceValue:value forKey:@"hidesBarsWhenKeyboardAppears" notification:NO];
     
