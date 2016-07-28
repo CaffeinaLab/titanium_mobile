@@ -1433,6 +1433,12 @@ properties:
     permission: read-only
     osver: {ios: {min: "9.1"}}
     since: "5.1.0"
+
+  - name: statusBarBackgroundColor
+    summary: Sets the global status bar background color for the application.
+    type: String
+    since: "6.0.0"
+    default: Undefined (Uses the native defaults)
                                                                                                               
 methods:
   - name: createTransitionAnimation
@@ -1530,7 +1536,7 @@ properties:
     summary: Animation to hide the current window.
     type: Titanium.UI.Animation
 
-  - name: tranistionTo
+  - name: transitionTo
     summary: Animation to show the new window.
     type: Titanium.UI.Animation
 

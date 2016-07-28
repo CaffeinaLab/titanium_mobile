@@ -1,2 +1,2 @@
-version = '5.2.2.CAFFEINA-2'
+version = '5.2.2.CAFFEINA-3'
 module_apiversion = '2'
