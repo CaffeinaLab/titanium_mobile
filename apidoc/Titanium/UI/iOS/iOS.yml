@@ -1868,6 +1868,21 @@ properties:
     osver: {ios: {min: "9.1"}}
     since: "5.1.0"
 
+  - name: statusBarBackgroundColor
+    summary: Sets the global status bar background color for the application.
+    type: String
+    since: "6.0.0"
+    default: Undefined (Uses the native defaults)
+                                                                                                              
+methods:
+  - name: createTransitionAnimation
+    summary: |
+        Creates a transition animation when opening or closing windows in a
+        <Titanium.UI.iOS.NavigationWindow> or <Titanium.UI.Tab>.
+    description: |
+        Use the object returned by this method with the Window's
+        [transitionAnimation](Titanium.UI.Window.transitionAnimation) property.
+
   - name: appBadge
     summary: Value of the badge for the application's springboard icon.
     type: Number

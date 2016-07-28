@@ -117,7 +117,18 @@
   return NUMBOOL([TiUtils forceTouchSupported]);
 }
 
-- (void)setStatusBarBackgroundColor:(id)value
+-(void)setStatusBarBackgroundColor:(id)value
+{
+    ENSURE_UI_THREAD(setStatusBarBackgroundColor, value);
+    ENSURE_SINGLE_ARG(value, NSString);
+    
+    UIView *statusBar = [[[UIApplication sharedApplication] valueForKey:@"statusBarWindow"] valueForKey:@"statusBar"];
+    if ([statusBar respondsToSelector:@selector(setBackgroundColor:)]) {
+        statusBar.backgroundColor = [[TiUtils colorValue:value] _color];
+    }
+}
+
+-(NSNumber*)SCROLL_DECELERATION_RATE_NORMAL
 {
   ENSURE_UI_THREAD(setStatusBarBackgroundColor, value);
   ENSURE_SINGLE_ARG(value, NSString);
