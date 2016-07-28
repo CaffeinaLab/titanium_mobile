@@ -170,6 +170,11 @@ public class EventProxy extends KrollProxy {
 		return queryEvents(Events.CONTENT_URI, query, queryArgs, "dtstart ASC");
 	}
 
+	public static ArrayList<EventProxy> queryEvents(TiContext context, String query, String[] queryArgs)
+	{
+		return queryEvents(query, queryArgs);
+	}
+
 	public static ArrayList<EventProxy> queryEventsBetweenDates(long date1, long date2, String query, String[] queryArgs)
 	{
 		ArrayList<EventProxy> events = new ArrayList<EventProxy>();
@@ -302,6 +307,111 @@ public class EventProxy extends KrollProxy {
 
 	@Kroll.method
 	public boolean save()
+	{
+		ContentResolver contentResolver = TiApplication.getInstance().getContentResolver();
+		if (!CalendarProxy.hasCalendarPermissions()) {
+			Log.e(TAG, "Missing calendar permissions");
+			return false;
+		}
+
+		ContentValues eventValues = new ContentValues();
+		eventValues.put("hasAlarm", 0);
+		eventValues.put("hasExtendedProperties", 1);
+
+		Date start = begin;
+		Date finish = end;
+
+		if (isInstance == true) {
+			ArrayList<EventProxy> events = queryEvents("_id = ?", new String[] { ""+id });
+			if (events.size() > 0) {
+				start = events.get(0).begin;
+				finish = events.get(0).end;
+			}
+		}
+
+		if (title == null) {
+			Log.e(TAG, "Title was not created, no title found for event");
+			return false;
+		}
+
+		if (calendarID == null) {
+			Log.e(TAG, "Calendar ID was not created, no calendarID found for event");
+			return false;
+		}
+
+		eventValues.put("title", title);
+		eventValues.put("calendar_id", calendarID);
+
+		// ICS requires eventTimeZone field when inserting new event
+		eventValues.put(Events.EVENT_TIMEZONE, new Date().toString());
+
+		if (location != null) {
+			eventValues.put(CalendarModule.EVENT_LOCATION, location);
+		}
+		if (description != null) {
+			eventValues.put("description", description);
+		}
+		if (start != null) {
+			eventValues.put("dtstart", start.getTime());
+		} else {
+			Log.e(TAG, "Begin date was not created, no begin found for event");
+			return false;
+		}
+		if (rrule != null) {
+			eventValues.put("rrule", rrule);
+
+			if (allDay == true) {
+				Double days = Math.ceil(((duration + DateUtils.DAY_IN_MILLIS - 1) / DateUtils.DAY_IN_MILLIS));
+
+				eventValues.put("duration", "P" + days.intValue() + "D");
+			} else {
+				Double seconds = Math.ceil((duration / DateUtils.SECOND_IN_MILLIS));
+
+				eventValues.put("duration", "PT" + seconds.intValue() + "S");
+			}
+			eventValues.putNull("dtend");
+		} else {
+			eventValues.put("dtend", finish != null ? finish.getTime() : start.getTime());
+			eventValues.putNull("duration");
+
+			eventValues.put("allDay", allDay ? 1 : 0);
+		}
+
+		eventValues.put("hasExtendedProperties", hasExtendedProperties ? 1 : 0);
+
+		eventValues.put("hasAlarm", hasAlarm ? 1 : 0);
+
+		Uri eventUri = null;
+
+		if (id != null) {
+			eventUri = ContentUris.withAppendedId(Events.CONTENT_URI, Long.parseLong(id));
+			int updatedRows = contentResolver.update(eventUri, eventValues, null, null);
+
+			if (updatedRows <= 0) {
+				eventUri = null;
+			}
+		} else {
+			eventUri = contentResolver.insert(Events.CONTENT_URI, eventValues);
+		}
+
+		if (eventUri != null) {
+			String eventId = eventUri.getLastPathSegment();
+
+			if (eventId != null) {
+				id = eventId;
+			} else {
+				Log.e(TAG, "Event not created.");
+				return false;
+			}
+		} else {
+			Log.e(TAG, "Event not created.");
+			return false;
+		}
+
+		return true;
+	}
+
+	public static ArrayList<EventProxy> queryEventsBetweenDates(long date1, long date2, CalendarProxy calendar)
 	{
 		ContentResolver contentResolver = TiApplication.getInstance().getContentResolver();
 		if (!CalendarProxy.hasCalendarPermissions()) {
