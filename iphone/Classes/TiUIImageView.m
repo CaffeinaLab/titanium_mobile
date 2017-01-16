@@ -276,11 +276,19 @@ DEFINE_EXCEPTIONS
 
 - (UIViewContentMode)contentModeForImageView
 {
-  if (TiDimensionIsAuto(width) || TiDimensionIsAutoSize(width) || TiDimensionIsUndefined(width) || TiDimensionIsAuto(height) || TiDimensionIsAutoSize(height) || TiDimensionIsUndefined(height)) {
-    return UIViewContentModeScaleAspectFit;
-  } else {
-    return UIViewContentModeScaleToFill;
-  }
+    BOOL aspectFill = [TiUtils boolValue:[self.proxy valueForKey:@"aspectFill"] def:NO];
+    if (aspectFill) {
+        return UIViewContentModeScaleAspectFill;
+    } else {
+    
+        if (TiDimensionIsAuto(width) || TiDimensionIsAutoSize(width) || TiDimensionIsUndefined(width) ||
+            TiDimensionIsAuto(height) || TiDimensionIsAutoSize(height) || TiDimensionIsUndefined(height)) {
+            return UIViewContentModeScaleAspectFit;
+        } else {
+            return UIViewContentModeScaleToFill;
+        }
+        
+    }
 }
 
 - (void)updateContentMode
