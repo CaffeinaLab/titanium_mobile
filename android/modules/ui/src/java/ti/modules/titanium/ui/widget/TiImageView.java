@@ -46,6 +46,8 @@ public class TiImageView extends ViewGroup implements Handler.Callback, OnClickL
 	private boolean enableScale;
 	private boolean enableZoomControls;
 
+	private boolean aspectFill;
+
 	private GestureDetector gestureDetector;
 	private ImageView imageView;
 	private ZoomControls zoomControls;
@@ -171,8 +173,12 @@ public class TiImageView extends ViewGroup implements Handler.Callback, OnClickL
 		updateScaleType();
 	}
 
-	public Drawable getImageDrawable()
-	{
+	public void setAspectFill(boolean val) {
+		this.aspectFill = val;
+		updateScaleType();
+	}
+
+	public Drawable getImageDrawable() {
 		return imageView.getDrawable();
 	}
 
@@ -433,19 +439,24 @@ public class TiImageView extends ViewGroup implements Handler.Callback, OnClickL
 
 	private void updateScaleType()
 	{
-		if (orientation > 0 || enableZoomControls) {
-			imageView.setScaleType(ScaleType.MATRIX);
+		if (aspectFill) {
+			imageView.setScaleType(ScaleType.CENTER_CROP);
 			imageView.setAdjustViewBounds(false);
 		} else {
-			if (viewWidthDefined && viewHeightDefined) {
+			if (orientation > 0 || enableZoomControls) {
+				imageView.setScaleType(ScaleType.MATRIX);
 				imageView.setAdjustViewBounds(false);
-				imageView.setScaleType(ScaleType.FIT_XY);
-			} else if (!enableScale) {
-				imageView.setAdjustViewBounds(false);
-				imageView.setScaleType(ScaleType.CENTER);
 			} else {
-				imageView.setAdjustViewBounds(true);
-				imageView.setScaleType(ScaleType.FIT_CENTER);
+				if (viewWidthDefined && viewHeightDefined) {
+					imageView.setAdjustViewBounds(false);
+					imageView.setScaleType(ScaleType.FIT_XY);
+				} else if (!enableScale) {
+					imageView.setAdjustViewBounds(false);
+					imageView.setScaleType(ScaleType.CENTER);
+				} else {
+					imageView.setAdjustViewBounds(true);
+					imageView.setScaleType(ScaleType.FIT_CENTER);
+				}
 			}
 		}
 		requestLayout();
