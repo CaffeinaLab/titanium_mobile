@@ -167,12 +167,11 @@ Common ant tasks and macros for building Android-based Titanium modules and proj
 			<mkdir dir="@{build.dir}"/>
 			<javac destdir="@{build.dir}"
 				fork="yes"
-				executable="/Library/Java/JavaVirtualMachines/jdk1.8.0_91.jdk/Contents/Home/bin/javac"
+				executable="/Library/Java/JavaVirtualMachines/jdk1.8.0_102.jdk/Contents/Home/bin/javac"
 				includes="@{includes}"
 				excludes="@{excludes}"
 				target="1.6"
 				source="1.6"
-				fork="true"
 				debug="@{debug}"
 				includeantruntime="false">
 
@@ -400,11 +399,10 @@ Common ant tasks and macros for building Android-based Titanium modules and proj
 		<mkdir dir="${kroll.common.classes.dir}"/>
 		<javac srcdir="${kroll.common.project.dir}/src/java"
 			fork="yes"
-			executable="/Library/Java/JavaVirtualMachines/jdk1.8.0_91.jdk/Contents/Home/bin/javac"
+			executable="/Library/Java/JavaVirtualMachines/jdk1.8.0_102.jdk/Contents/Home/bin/javac"
 			destdir="${kroll.common.classes.dir}" debug="true"
 			source="1.6" target="1.6"
-			includeantruntime="false"
-			fork="true">
+			includeantruntime="false">
 			<classpath refid="android"/>
 		</javac>
 
@@ -417,7 +415,7 @@ Common ant tasks and macros for building Android-based Titanium modules and proj
 		<mkdir dir="${kroll.v8.classes.dir}"/>
 		<javac srcdir="${kroll.v8.project.dir}/src/java" destdir="${kroll.v8.classes.dir}" debug="true"
 			fork="yes"
-			executable="/Library/Java/JavaVirtualMachines/jdk1.8.0_91.jdk/Contents/Home/bin/javac"
+			executable="/Library/Java/JavaVirtualMachines/jdk1.8.0_102.jdk/Contents/Home/bin/javac"
 			target="1.6" source="1.6" includeantruntime="false">
 			<classpath refid="android"/>
 			<classpath>
@@ -649,15 +647,14 @@ Common ant tasks and macros for building Android-based Titanium modules and proj
 			<mkdir dir="${dist.classes.dir}/ant-tasks"/>
 			<javac srcdir="${ti.build.dir}/src"
 				fork="yes"
-				executable="/Library/Java/JavaVirtualMachines/jdk1.8.0_91.jdk/Contents/Home/bin/javac"
+				executable="/Library/Java/JavaVirtualMachines/jdk1.8.0_102.jdk/Contents/Home/bin/javac"
 				destdir="${dist.classes.dir}/ant-tasks"
 				includes="**/*.java"
 				classpathref="ti.build.lib.path"
 				includeantruntime="false"
 				debug="true"
 				target="1.6"
-				source="1.6"
-				fork="true"/>
+				source="1.6"/>
 			<jar basedir="${dist.classes.dir}/ant-tasks" destfile="${dist.dir}/ant-tasks.jar"/>
 		</sequential>
 	</macrodef>
