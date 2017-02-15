@@ -856,8 +856,8 @@ public abstract class TiBaseActivity extends AppCompatActivity
 		if (topWindow != null && topWindow.hasProperty(TiC.PROPERTY_ON_BACK)) {
 			KrollFunction onBackCallback = (KrollFunction) topWindow.getProperty(TiC.PROPERTY_ON_BACK);
 			onBackCallback.callAsync(activityProxy.getKrollObject(), new Object[] {});
-			
-		} else {
+		}
+		if (topWindow == null || (topWindow != null && !topWindow.hasProperty(TiC.PROPERTY_ON_BACK) && !topWindow.hasListeners(TiC.EVENT_ANDROID_BACK))) {
 			// there are no parent activities to return to
 			// override back press to background the activity
 			// note: 2 since there should always be TiLaunchActivity and TiActivity
