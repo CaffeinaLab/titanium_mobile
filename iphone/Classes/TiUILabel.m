@@ -30,12 +30,13 @@
 
 - (id)init
 {
-  if (self = [super init]) {
-    padding = CGRectZero;
-    initialLabelFrame = CGRectZero;
-    verticalAlign = UIControlContentVerticalAlignmentFill;
-  }
-  return self;
+    if (self = [super init]) {
+        padding = CGRectZero;
+        initialLabelFrame = CGRectZero;
+        verticalAlign = UIControlContentVerticalAlignmentFill;
+        heightMultiply = 1.0f;
+    }
+    return self;
 }
 
 - (void)dealloc
@@ -47,31 +48,34 @@
 
 - (BOOL)interactionDefault
 {
-  // by default, labels don't have any interaction unless you explicitly add
-  // it via addEventListener
-  return NO;
+    // by default, labels don't have any interaction unless you explicitly add
+    // it via addEventListener
+    return NO;
 }
 
 - (CGSize)sizeForFont:(CGFloat)suggestedWidth
 {
-  NSAttributedString *value = [label attributedText];
-  CGSize maxSize = CGSizeMake(suggestedWidth <= 0 ? 480 : suggestedWidth, 10000);
-  CGSize shadowOffset = [label shadowOffset];
-  requiresLayout = YES;
-  if ((suggestedWidth > 0) && [[label text] hasSuffix:@" "]) {
-    // (CGSize)sizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size lineBreakMode:(UILineBreakMode)lineBreakMode method truncates
-    // the string having trailing spaces when given size parameter width is equal to the expected return width, so we adjust it here.
-    maxSize.width += 0.00001;
-  }
-  CGSize returnVal = [value size];
-  CGSize size = CGSizeMake(ceilf(returnVal.width), ceilf(returnVal.height));
-  if (shadowOffset.width > 0) {
-    // if we have a shadow and auto, we need to adjust to prevent
-    // font from clipping
-    size.width += shadowOffset.width + 10;
-  }
+    NSAttributedString *value = [label attributedText];
+    CGSize maxSize = CGSizeMake(suggestedWidth<=0 ? 480 : suggestedWidth, 10000);
+    CGSize shadowOffset = [label shadowOffset];
+    requiresLayout = YES;
+    if ((suggestedWidth > 0) && [[label text] hasSuffix:@" "]) {
+        // (CGSize)sizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size lineBreakMode:(UILineBreakMode)lineBreakMode method truncates
+        // the string having trailing spaces when given size parameter width is equal to the expected return width, so we adjust it here.
+        maxSize.width += 0.00001;
+    }
+    CGSize returnVal = [value boundingRectWithSize:maxSize
+                                           options:NSStringDrawingUsesLineFragmentOrigin
+                                           context:nil].size;
+    CGSize size = CGSizeMake(ceilf(returnVal.width), ceilf(returnVal.height));
+    if (shadowOffset.width > 0)
+    {
+        // if we have a shadow and auto, we need to adjust to prevent
+        // font from clipping
+        size.width += shadowOffset.width + 10;
+    }
 
-  return size;
+    return size;
 }
 
 - (CGFloat)contentWidthForWidth:(CGFloat)suggestedWidth
@@ -88,20 +92,59 @@
 
 - (CGFloat)contentHeightForWidth:(CGFloat)width
 {
-  return [[self label] sizeThatFits:CGSizeMake(width, 0)].height;
+    return [[self label] sizeThatFits:CGSizeMake(width, 0)].height * heightMultiply;
 }
 
 - (void)padLabel
 {
 #ifndef TI_USE_AUTOLAYOUT
-  CGSize actualLabelSize = [[self label] sizeThatFits:CGSizeMake(initialLabelFrame.size.width, 0)];
-  UIControlContentVerticalAlignment alignment = verticalAlign;
-  if (alignment == UIControlContentVerticalAlignmentFill) {
-    //IOS7 layout issue fix with attributed string.
-    if (actualLabelSize.height < initialLabelFrame.size.height) {
-      alignment = UIControlContentVerticalAlignmentCenter;
-    } else {
-      alignment = UIControlContentVerticalAlignmentTop;
+    CGSize actualLabelSize = [[self label] sizeThatFits:CGSizeMake(initialLabelFrame.size.width, 0)];
+    CGFloat height = actualLabelSize.height * heightMultiply;
+    
+    UIControlContentVerticalAlignment alignment = verticalAlign;
+    if (alignment == UIControlContentVerticalAlignmentFill) {
+        //IOS7 layout issue fix with attributed string.
+        if (height < initialLabelFrame.size.height) {
+            alignment = UIControlContentVerticalAlignmentCenter;
+        } else {
+            alignment = UIControlContentVerticalAlignmentTop;
+        }
+    }
+    if (alignment != UIControlContentVerticalAlignmentFill && ([label numberOfLines] != 1)) {
+        CGFloat originX = 0;
+        switch (label.textAlignment) {
+            case NSTextAlignmentRight:
+                originX = (initialLabelFrame.size.width - actualLabelSize.width);
+                break;
+            case NSTextAlignmentCenter:
+                originX = (initialLabelFrame.size.width - actualLabelSize.width)/2.0;
+                break;
+            default:
+                break;
+        }
+
+        if (originX < 0) {
+            originX = 0;
+        }
+        CGRect labelRect = CGRectMake(originX, 0, actualLabelSize.width, height);
+        switch (alignment) {
+            case UIControlContentVerticalAlignmentBottom:
+                labelRect.origin.y = initialLabelFrame.size.height - height;
+                break;
+            case UIControlContentVerticalAlignmentCenter:
+                labelRect.origin.y = (initialLabelFrame.size.height - height)/2;
+                if (labelRect.origin.y < 0) {
+                    labelRect.size.height = (initialLabelFrame.size.height - labelRect.origin.y);
+                }
+                break;
+            default:
+                if (initialLabelFrame.size.height < height) {
+                    labelRect.size.height = initialLabelFrame.size.height * heightMultiply;
+                }
+                break;
+        }
+
+        [label setFrame:CGRectIntegral(labelRect)];
     }
   }
   if (alignment != UIControlContentVerticalAlignmentFill && ([label numberOfLines] != 1)) {
