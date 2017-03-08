@@ -34,6 +34,7 @@
         padding = CGRectZero;
         initialLabelFrame = CGRectZero;
         verticalAlign = UIControlContentVerticalAlignmentFill;
+        heightMultiply = 1.0f;
     }
     return self;
 }
@@ -48,35 +49,35 @@
 
 - (BOOL)interactionDefault
 {
-	// by default, labels don't have any interaction unless you explicitly add
-	// it via addEventListener
-	return NO;
+    // by default, labels don't have any interaction unless you explicitly add
+    // it via addEventListener
+    return NO;
 }
 
 
 -(CGSize)sizeForFont:(CGFloat)suggestedWidth
 {
-	NSAttributedString *value = [label attributedText];
-	CGSize maxSize = CGSizeMake(suggestedWidth<=0 ? 480 : suggestedWidth, 10000);
-	CGSize shadowOffset = [label shadowOffset];
-	requiresLayout = YES;
-	if ((suggestedWidth > 0) && [[label text] hasSuffix:@" "]) {
-		// (CGSize)sizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size lineBreakMode:(UILineBreakMode)lineBreakMode method truncates
-		// the string having trailing spaces when given size parameter width is equal to the expected return width, so we adjust it here.
-		maxSize.width += 0.00001;
-	}
+    NSAttributedString *value = [label attributedText];
+    CGSize maxSize = CGSizeMake(suggestedWidth<=0 ? 480 : suggestedWidth, 10000);
+    CGSize shadowOffset = [label shadowOffset];
+    requiresLayout = YES;
+    if ((suggestedWidth > 0) && [[label text] hasSuffix:@" "]) {
+        // (CGSize)sizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size lineBreakMode:(UILineBreakMode)lineBreakMode method truncates
+        // the string having trailing spaces when given size parameter width is equal to the expected return width, so we adjust it here.
+        maxSize.width += 0.00001;
+    }
     CGSize returnVal = [value boundingRectWithSize:maxSize
                                            options:NSStringDrawingUsesLineFragmentOrigin
                                            context:nil].size;
     CGSize size = CGSizeMake(ceilf(returnVal.width), ceilf(returnVal.height));
-	if (shadowOffset.width > 0)
-	{
-		// if we have a shadow and auto, we need to adjust to prevent
-		// font from clipping
-		size.width += shadowOffset.width + 10;
-	}
+    if (shadowOffset.width > 0)
+    {
+        // if we have a shadow and auto, we need to adjust to prevent
+        // font from clipping
+        size.width += shadowOffset.width + 10;
+    }
 
-	return size;
+    return size;
 }
 
 
@@ -94,17 +95,19 @@
 
 -(CGFloat)contentHeightForWidth:(CGFloat)width
 {
-	return [[self label] sizeThatFits:CGSizeMake(width, 0)].height;
+    return [[self label] sizeThatFits:CGSizeMake(width, 0)].height * heightMultiply;
 }
 
 -(void)padLabel
 {
 #ifndef TI_USE_AUTOLAYOUT
     CGSize actualLabelSize = [[self label] sizeThatFits:CGSizeMake(initialLabelFrame.size.width, 0)];
+    CGFloat height = actualLabelSize.height * heightMultiply;
+    
     UIControlContentVerticalAlignment alignment = verticalAlign;
     if (alignment == UIControlContentVerticalAlignmentFill) {
         //IOS7 layout issue fix with attributed string.
-        if (actualLabelSize.height < initialLabelFrame.size.height) {
+        if (height < initialLabelFrame.size.height) {
             alignment = UIControlContentVerticalAlignmentCenter;
         } else {
             alignment = UIControlContentVerticalAlignmentTop;
@@ -126,20 +129,20 @@
         if (originX < 0) {
             originX = 0;
         }
-        CGRect labelRect = CGRectMake(originX, 0, actualLabelSize.width, actualLabelSize.height);
+        CGRect labelRect = CGRectMake(originX, 0, actualLabelSize.width, height);
         switch (alignment) {
             case UIControlContentVerticalAlignmentBottom:
-                labelRect.origin.y = initialLabelFrame.size.height - actualLabelSize.height;
+                labelRect.origin.y = initialLabelFrame.size.height - height;
                 break;
             case UIControlContentVerticalAlignmentCenter:
-                labelRect.origin.y = (initialLabelFrame.size.height - actualLabelSize.height)/2;
+                labelRect.origin.y = (initialLabelFrame.size.height - height)/2;
                 if (labelRect.origin.y < 0) {
                     labelRect.size.height = (initialLabelFrame.size.height - labelRect.origin.y);
                 }
                 break;
             default:
-                if (initialLabelFrame.size.height < actualLabelSize.height) {
-                    labelRect.size.height = initialLabelFrame.size.height;
+                if (initialLabelFrame.size.height < height) {
+                    labelRect.size.height = initialLabelFrame.size.height * heightMultiply;
                 }
                 break;
         }
@@ -154,17 +157,17 @@
     {
         [self updateBackgroundImageFrameWithPadding];
     }
-	return;
+    return;
 #endif
 }
 
 #ifndef TI_USE_AUTOLAYOUT
 // FIXME: This isn't quite true.  But the brilliant soluton wasn't so brilliant, because it screwed with layout in unpredictable ways.
-//	Sadly, there was a brilliant solution for fixing the blurring here, but it turns out there's a
-//	quicker fix: Make sure the label itself has an even height and width. Everything else is irrelevant.
+//  Sadly, there was a brilliant solution for fixing the blurring here, but it turns out there's a
+//  quicker fix: Make sure the label itself has an even height and width. Everything else is irrelevant.
 -(void)setCenter:(CGPoint)newCenter
 {
-	[super setCenter:CGPointMake(floorf(newCenter.x), floorf(newCenter.y))];
+    [super setCenter:CGPointMake(floorf(newCenter.x), floorf(newCenter.y))];
 }
 #endif
 
@@ -180,8 +183,8 @@
 
 -(UILabel*)label
 {
-	if (label==nil)
-	{
+    if (label==nil)
+    {
         label = [[UILabel alloc] initWithFrame:CGRectZero];
         label.backgroundColor = [UIColor clearColor];
         label.numberOfLines = 0;
@@ -196,7 +199,7 @@
 #endif
         minFontSize = 0;
     }
-	return label;
+    return label;
 }
 
 -(BOOL)proxyHasGestureListeners
@@ -214,9 +217,9 @@
 
 -(void)handleListenerRemovedWithEvent:(NSString *)event
 {
-	ENSURE_UI_THREAD_1_ARG(event);
-	// unfortunately on a remove, we have to check all of them
-	// since we might be removing one but we still have others
+    ENSURE_UI_THREAD_1_ARG(event);
+    // unfortunately on a remove, we have to check all of them
+    // since we might be removing one but we still have others
     if ([event isEqualToString:@"link"] || [event isEqualToString:@"singletap"]) {
         BOOL enableListener = [self.proxy _hasListeners:@"singletap"] || [(TiViewProxy*)[self proxy] _hasListeners:@"link" checkParent:NO];
         [[self gestureRecognizerForEvent:@"singletap"] setEnabled:enableListener];
@@ -229,7 +232,8 @@
 
 - (NSTextContainer*)currentTextContainer
 {
-    NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:self.label.bounds.size];
+    CGSize s = CGSizeMake(self.label.bounds.size.width, self.label.bounds.size.height * heightMultiply);
+    NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:s];
     textContainer.lineFragmentPadding  = 0;
     textContainer.maximumNumberOfLines = (NSUInteger)self.label.numberOfLines;
     textContainer.lineBreakMode = self.label.lineBreakMode;
@@ -364,24 +368,24 @@
 
 - (id)accessibilityElement
 {
-	return [self label];
+    return [self label];
 }
 
 -(void)setHighlighted:(BOOL)newValue
 {
-	[[self label] setHighlighted:newValue];
+    [[self label] setHighlighted:newValue];
 }
 
 - (void)didMoveToSuperview
 {
-	/*
-	 *	Because of how we re-use the same cells in both a tableview and its
-	 *	search table, there is the chance that the label is transported between
-	 *	the two views before a selected search row is deselected. In other
-	 *	words, make sure we're not highlighted when changing superviews.
-	 */
-	[self setHighlighted:NO];
-	[super didMoveToSuperview];
+    /*
+     *  Because of how we re-use the same cells in both a tableview and its
+     *  search table, there is the chance that the label is transported between
+     *  the two views before a selected search row is deselected. In other
+     *  words, make sure we're not highlighted when changing superviews.
+     */
+    [self setHighlighted:NO];
+    [super didMoveToSuperview];
 }
 
 - (void)didMoveToWindow
@@ -395,7 +399,7 @@
 
 -(BOOL)isHighlighted
 {
-	return [[self label] isHighlighted];
+    return [[self label] isHighlighted];
 }
 
 #pragma mark Public APIs
@@ -412,31 +416,31 @@
 }
 -(void)setText_:(id)text
 {
-	[[self label] setText:[TiUtils stringValue:text]];
+    [[self label] setText:[TiUtils stringValue:text]];
     [self padLabel];
-	[(TiViewProxy *)[self proxy] contentsWillChange];
+    [(TiViewProxy *)[self proxy] contentsWillChange];
 }
 
 -(void)setColor_:(id)color
 {
-	UIColor * newColor = [[TiUtils colorValue:color] _color];
-	[[self label] setTextColor:(newColor != nil)?newColor:[UIColor darkTextColor]];
+    UIColor * newColor = [[TiUtils colorValue:color] _color];
+    [[self label] setTextColor:(newColor != nil)?newColor:[UIColor darkTextColor]];
 }
 
 -(void)setEllipsize_:(id)value
 {
-	ENSURE_SINGLE_ARG(value, NSNumber);
-	if ([[TiUtils stringValue:value] isEqualToString:@"true"]) {
-		[[self label] setLineBreakMode:NSLineBreakByTruncatingTail];
-		return;
-	}
-	[[self label] setLineBreakMode:[TiUtils intValue:value]];
+    ENSURE_SINGLE_ARG(value, NSNumber);
+    if ([[TiUtils stringValue:value] isEqualToString:@"true"]) {
+        [[self label] setLineBreakMode:NSLineBreakByTruncatingTail];
+        return;
+    }
+    [[self label] setLineBreakMode:[TiUtils intValue:value]];
 }
 
 -(void)setHighlightedColor_:(id)color
 {
-	UIColor * newColor = [[TiUtils colorValue:color] _color];
-	[[self label] setHighlightedTextColor:(newColor != nil)?newColor:[UIColor lightTextColor]];
+    UIColor * newColor = [[TiUtils colorValue:color] _color];
+    [[self label] setHighlightedTextColor:(newColor != nil)?newColor:[UIColor lightTextColor]];
 }
 
 -(void)setFont_:(id)font
@@ -487,6 +491,12 @@
 #endif
 }
 
+-(void)setHeightMultiply_:(id)arg
+{
+    heightMultiply = [TiUtils floatValue: arg];
+    [self padLabel];
+}
+
 -(void)setBackgroundPaddingLeft_:(id)left
 {
     padding.origin.x = [TiUtils floatValue:left];
@@ -513,28 +523,28 @@
 
 -(void)setTextAlign_:(id)alignment
 {
-	[[self label] setTextAlignment:[TiUtils textAlignmentValue:alignment]];
+    [[self label] setTextAlignment:[TiUtils textAlignmentValue:alignment]];
     [self padLabel];
 }
 
 -(void)setShadowColor_:(id)color
 {
-	if (color==nil)
-	{
-		[[self label] setShadowColor:nil];
-	}
-	else
-	{
-		color = [TiUtils colorValue:color];
-		[[self label] setShadowColor:[color _color]];
-	}
+    if (color==nil)
+    {
+        [[self label] setShadowColor:nil];
+    }
+    else
+    {
+        color = [TiUtils colorValue:color];
+        [[self label] setShadowColor:[color _color]];
+    }
 }
 
 -(void)setShadowOffset_:(id)value
 {
-	CGPoint p = [TiUtils pointValue:value];
-	CGSize size = {p.x,p.y};
-	[[self label] setShadowOffset:size];
+    CGPoint p = [TiUtils pointValue:value];
+    CGSize size = {p.x,p.y};
+    [[self label] setShadowOffset:size];
 }
 
 @end
