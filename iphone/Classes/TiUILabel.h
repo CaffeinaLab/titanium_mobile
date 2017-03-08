@@ -8,15 +8,16 @@
 
 #import "TiUIView.h"
 
-@interface TiUILabel : TiUIView <LayoutAutosizing> {
-  @private
+@interface TiUILabel : TiUIView<LayoutAutosizing> {
+@private
   UILabel *label;
-  UIView *wrapperView;
+  UIView* wrapperView;
   BOOL requiresLayout;
   CGRect padding;
   UIControlContentVerticalAlignment verticalAlign;
   CGRect initialLabelFrame;
   CGFloat minFontSize;
+  CGFloat heightMultiply;
 }
 
 @property (nonatomic, getter=isHighlighted) BOOL highlighted; // default is NO

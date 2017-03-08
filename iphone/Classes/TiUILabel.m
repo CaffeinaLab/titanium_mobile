@@ -34,6 +34,7 @@
     padding = CGRectZero;
     initialLabelFrame = CGRectZero;
     verticalAlign = UIControlContentVerticalAlignmentFill;
+    heightMultiply = 1.0f;
   }
   return self;
 }
@@ -63,7 +64,10 @@
     // the string having trailing spaces when given size parameter width is equal to the expected return width, so we adjust it here.
     maxSize.width += 0.00001;
   }
-  CGSize returnVal = [value size];
+  CGSize returnVal = [value boundingRectWithSize:maxSize
+                                         options:NSStringDrawingUsesLineFragmentOrigin
+                                         context:nil]
+                         .size;
   CGSize size = CGSizeMake(ceilf(returnVal.width), ceilf(returnVal.height));
   if (shadowOffset.width > 0) {
     // if we have a shadow and auto, we need to adjust to prevent
@@ -88,17 +92,19 @@
 
 - (CGFloat)contentHeightForWidth:(CGFloat)width
 {
-  return [[self label] sizeThatFits:CGSizeMake(width, 0)].height;
+  return [[self label] sizeThatFits:CGSizeMake(width, 0)].height * heightMultiply;
 }
 
 - (void)padLabel
 {
 #ifndef TI_USE_AUTOLAYOUT
   CGSize actualLabelSize = [[self label] sizeThatFits:CGSizeMake(initialLabelFrame.size.width, 0)];
+  CGFloat height = actualLabelSize.height * heightMultiply;
+
   UIControlContentVerticalAlignment alignment = verticalAlign;
   if (alignment == UIControlContentVerticalAlignmentFill) {
     //IOS7 layout issue fix with attributed string.
-    if (actualLabelSize.height < initialLabelFrame.size.height) {
+    if (height < initialLabelFrame.size.height) {
       alignment = UIControlContentVerticalAlignmentCenter;
     } else {
       alignment = UIControlContentVerticalAlignmentTop;
@@ -120,20 +126,20 @@
     if (originX < 0) {
       originX = 0;
     }
-    CGRect labelRect = CGRectMake(originX, 0, actualLabelSize.width, actualLabelSize.height);
+    CGRect labelRect = CGRectMake(originX, 0, actualLabelSize.width, height);
     switch (alignment) {
     case UIControlContentVerticalAlignmentBottom:
-      labelRect.origin.y = initialLabelFrame.size.height - actualLabelSize.height;
+      labelRect.origin.y = initialLabelFrame.size.height - height;
       break;
     case UIControlContentVerticalAlignmentCenter:
-      labelRect.origin.y = (initialLabelFrame.size.height - actualLabelSize.height) / 2;
+      labelRect.origin.y = (initialLabelFrame.size.height - height) / 2;
       if (labelRect.origin.y < 0) {
         labelRect.size.height = (initialLabelFrame.size.height - labelRect.origin.y);
       }
       break;
     default:
-      if (initialLabelFrame.size.height < actualLabelSize.height) {
-        labelRect.size.height = initialLabelFrame.size.height;
+      if (initialLabelFrame.size.height < height) {
+        labelRect.size.height = initialLabelFrame.size.height * heightMultiply;
       }
       break;
     }
@@ -220,7 +226,8 @@
 
 - (NSTextContainer *)currentTextContainer
 {
-  NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:self.label.bounds.size];
+  CGSize s = CGSizeMake(self.label.bounds.size.width, self.label.bounds.size.height * heightMultiply);
+  NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:s];
   textContainer.lineFragmentPadding = 0;
   textContainer.maximumNumberOfLines = (NSUInteger)self.label.numberOfLines;
   textContainer.lineBreakMode = self.label.lineBreakMode;
@@ -486,7 +493,13 @@
 #endif
 }
 
-- (void)setBackgroundPaddingLeft_:(id)left
+-(void)setHeightMultiply_:(id)arg
+{
+  heightMultiply = [TiUtils floatValue:arg];
+  [self padLabel];
+}
+
+-(void)setBackgroundPaddingLeft_:(id)left
 {
   padding.origin.x = [TiUtils floatValue:left];
   [self updateBackgroundImageFrameWithPadding];
