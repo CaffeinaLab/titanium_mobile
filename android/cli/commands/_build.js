@@ -225,7 +225,7 @@ AndroidBuilder.prototype.config = function config(logger, config, cli) {
 							if (emu.type == 'avd') {
 								return {
 									name: emu.name,
-									id: emu.name,
+									id: emu.id,
 									api: emu['api-level'],
 									version: emu['sdk-version'],
 									abi: emu.abi,
@@ -1407,7 +1407,7 @@ AndroidBuilder.prototype.validate = function validate(logger, config, cli) {
 	if (this.debugPort || this.profilerPort) {
 		// if debugging/profiling, make sure we only have one device and that it has an sd card
 		if (this.target == 'emulator') {
-			var emu = this.devices.filter(function (d) { return d.name == deviceId; }).shift();
+			var emu = this.devices.filter(function (d) { return d.id == deviceId; }).shift();
 			if (!emu) {
 				logger.error(__('Unable find emulator "%s"', deviceId) + '\n');
 				process.exit(1);
@@ -1472,24 +1472,51 @@ AndroidBuilder.prototype.validate = function validate(logger, config, cli) {
 				if (module.platform.indexOf('commonjs') != -1) {
 					module.native = false;
 
-					// Look for legacy module.id.js first
-					module.libFile = path.join(module.modulePath, module.id + '.js');
-					if (!fs.existsSync(module.libFile)) {
-						// then package.json TODO Verify the main property points at reale file under the module!
-						module.libFile = path.join(module.modulePath, 'package.json');
-						if (!fs.existsSync(module.libFile)) {
-							// then index.js
-							module.libFile = path.join(module.modulePath, 'index.js');
-							if (!fs.existsSync(module.libFile)) {
-								// then index.json
-								module.libFile = path.join(module.modulePath, 'index.json');
-								if (!fs.existsSync(module.libFile)) {
-									this.logger.error(__('Module %s version %s is missing module files: %s, package.json, index.js, or index.json', module.id.cyan, (module.manifest.version || 'latest').cyan, path.join(module.modulePath, module.id + '.js').cyan) + '\n');
-									process.exit(1);
+					// look for legacy module.id.js first
+					var libFile = path.join(module.modulePath, module.id + '.js');
+					module.libFile = fs.existsSync(libFile) ? libFile : null;
+					// If no legacy file, look for package.json...
+					if (!module.libFile) {
+						var pkgJsonFile = path.join(module.modulePath, 'package.json');
+						if (fs.existsSync(pkgJsonFile)) {
+							try {
+								var pkgJson = require(pkgJsonFile);
+								// look for 'main' property
+								if (pkgJson && pkgJson.main) {
+									// look for main file as-is
+									if (fs.existsSync(libFile = path.join(module.modulePath, pkgJson.main))) {
+										module.libFile = libFile;
+									}
+									// look with .js extension
+									if (!module.libFile && fs.existsSync(libFile = path.join(module.modulePath, pkgJson.main + '.js'))) {
+										module.libFile = libFile;
+									}
+									// look with .json extension
+									if (!module.libFile && fs.existsSync(libFile = path.join(module.modulePath, pkgJson.main + '.json'))) {
+										module.libFile = libFile;
+									}
 								}
+							} catch (e) {
+								// squeltch
 							}
 						}
+
+						// look for index.js in root directory of module
+						if (!module.libFile && fs.existsSync(libFile = path.join(module.modulePath, 'index.js'))) {
+							module.libFile = libFile;
+						}
+
+						// look for index.json in root directory of module
+						if (!module.libFile && fs.existsSync(libFile = path.join(module.modulePath, 'index.json'))) {
+							module.libFile = libFile;
+						}
+
+						if (!module.libFile) {
+							this.logger.error(__('Module "%s" v%s is missing main file: %s, package.json with "main" entry, index.js, or index.json', module.id, module.manifest.version || 'latest', module.id + '.js') + '\n');
+							process.exit(1);
+						}
 					}
+
 					this.commonJsModules.push(module);
 				} else {
 					module.native = true;
@@ -1752,7 +1779,7 @@ AndroidBuilder.prototype.initialize = function initialize(next) {
 
 	var deviceId = this.deviceId = argv['device-id'];
 	if (!this.buildOnly && this.target == 'emulator') {
-		var emu = this.devices.filter(function (e) { return e.name == deviceId; }).shift();
+		var emu = this.devices.filter(function (e) { return e.id == deviceId; }).shift();
 		if (!emu) {
 			// sanity check
 			this.logger.error(__('Unable to find Android emulator "%s"', deviceId) + '\n');
@@ -2685,8 +2712,15 @@ AndroidBuilder.prototype.copyResources = function copyResources(next) {
 						done();
 					}.bind(this));
 				}),
-				args = [ this.tiapp.guid, this.appid, this.buildAssetsDir ].concat(jsFilesToEncrypt),
-				opts = {
+				args = [ this.tiapp.guid, this.appid, this.buildAssetsDir ].concat(jsFilesToEncrypt);
+
+			if (process.platform == 'win32') {
+				var fileListing = path.join(this.buildDir, 'titanium_prep_listing.txt');
+				args = [ this.tiapp.guid, this.appid, this.buildAssetsDir , '--file-listing', fileListing];
+				fs.writeFileSync(fileListing, jsFilesToEncrypt.join('\n'));
+			}
+
+			var opts = {
 					env: appc.util.mix({}, process.env, {
 						// we force the JAVA_HOME so that titaniumprep doesn't complain
 						'JAVA_HOME': this.jdkInfo.home
@@ -3384,6 +3418,12 @@ AndroidBuilder.prototype.generateTheme = function generateTheme(next) {
 		if (this.tiapp.fullscreen || this.tiapp['statusbar-hidden']) {
 			flags += '.Fullscreen';
 		}
+		if (this.tiappAndroidManifest && this.tiappAndroidManifest.application && this.tiappAndroidManifest.application.theme) {
+			var theme = this.tiappAndroidManifest.application.theme;
+			if (theme.startsWith('@style/')) {
+				flags = theme.replace('@style/', '');
+			}
+		}
 
 		fs.writeFileSync(themeFile, ejs.render(fs.readFileSync(path.join(this.templatesDir, 'theme.xml')).toString(), {
 			flags: flags
@@ -3658,10 +3698,12 @@ AndroidBuilder.prototype.generateAndroidManifest = function generateAndroidManif
 	}
 
 	// add permissions
-	Array.isArray(finalAndroidManifest['uses-permission']) || (finalAndroidManifest['uses-permission'] = []);
-	Object.keys(permissions).forEach(function (perm) {
-		finalAndroidManifest['uses-permission'].indexOf(perm) == -1 && finalAndroidManifest['uses-permission'].push(perm);
-	});
+	if (!this.tiapp['override-permissions']) {
+		Array.isArray(finalAndroidManifest['uses-permission']) || (finalAndroidManifest['uses-permission'] = []);
+		Object.keys(permissions).forEach(function (perm) {
+			finalAndroidManifest['uses-permission'].indexOf(perm) == -1 && finalAndroidManifest['uses-permission'].push(perm);
+		});
+	}
 
 	// if the AndroidManifest.xml already exists, remove it so that we aren't updating the original file (if it's symlinked)
 	fs.existsSync(this.androidManifestFile) && fs.unlinkSync(this.androidManifestFile);

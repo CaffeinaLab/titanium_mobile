@@ -10,6 +10,7 @@ import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.util.TiActivitySupport;
 import org.appcelerator.titanium.util.TiRHelper;
 
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -71,6 +72,31 @@ public class TiRootActivity extends TiLaunchActivity
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
+		TiApplication tiApp = getTiApp();
+		Intent intent = getIntent();
+		TiRootActivity rootActivity = tiApp.getRootActivity();
+
+		if (intent != null) {
+			if (rootActivity != null) {
+				rootActivity.setIntent(intent);
+			}
+			if (tiApp.intentFilterNewTask() &&
+				intent.getAction() != null && intent.getAction().equals(Intent.ACTION_VIEW) &&
+				intent.getDataString() != null &&
+				(intent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != Intent.FLAG_ACTIVITY_NEW_TASK) {
+
+				if (rootActivity == null) {
+					intent.setAction(Intent.ACTION_MAIN);
+				}
+				intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+				startActivity(intent);
+				finish();
+				
+				super.onCreate(savedInstanceState);
+				return;
+			}
+		}
+
 		if (willFinishFalseRootActivity(savedInstanceState)) {
 			return;
 		}
@@ -79,8 +105,6 @@ public class TiRootActivity extends TiLaunchActivity
 			// Android bug 2373 detected and we're going to restart.
 			return;
 		}
-
-		TiApplication tiApp = getTiApp();
 
 		if (tiApp.isRestartPending() || TiBaseActivity.isUnsupportedReLaunch(this, savedInstanceState)) {
 			super.onCreate(savedInstanceState); // Will take care of scheduling restart and finishing.
