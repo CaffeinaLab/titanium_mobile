@@ -282,6 +282,10 @@ events:
         The application needs to monitor the <Titanium.App.pause> event.
         See <Titanium.App> for more information on the iOS application lifecycle.
 
+  - name: willclose
+    summary: Fired when the window is about to close, right before `close`.
+    platforms: [ios]
+
   - name: close
     summary: Fired when the window is closed.
 
