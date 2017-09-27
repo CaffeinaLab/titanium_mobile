@@ -45,7 +45,7 @@ description: |
     from processing and left intact, which means they can be correctly loaded in the WebView.
 
     For local JavaScript files not referenced in static local HTML files, for example, a
-    dynamically-genereated HTML file referencing a local JavaScript file,
+    dynamically-generated HTML file referencing a local JavaScript file,
     rename the file extension of the local JavaScript files to '.jslocal' instead of '.js'.
 
     The build process for testing your application on the simulator, emulator or device does not
@@ -272,7 +272,7 @@ methods:
       - name: password
         summary: Basic auth password.
         type: String
-
+        
   - name: stopLoading
     summary: Stops loading a currently loading page.
     description: |
@@ -390,14 +390,23 @@ events:
         type: Number
 
   - name: onStopBlacklistedUrl
-    summary: Fired when a blacklisted Url is stopped
-    description: |
-        This event is fired when a blacklisted Url is stopped
+    summary: Fired when a blacklisted URL is stopped.
     platforms: [android]
-    since: "5.4.0"
+    since: 5.4.0
     properties:
       - name: url
-        summary: URL of the web document that is stopped.
+        summary: The URL of the web document that is stopped.
+    deprecated:
+        since: "6.1.0"
+        notes: Use the  cross-platform `blacklisturl` event instead.
+        
+  - name: blacklisturl
+    summary: Fired when a blacklisted URL is stopped.
+    platforms: [android, iphone, ipad]
+    since: {android: "6.1.0", iphone: "6.1.0", ipad: "6.1.0"}
+    properties:
+      - name: url
+        summary: The URL of the web document that is stopped.
         
 properties:
 
@@ -427,8 +436,8 @@ properties:
         the blacklist. Note, this only applies in the links clicked inside the webview. The first website
         that is loaded will not be stopped even if it matches the blacklist.
     type: Array<String>
-    since: "5.4.0"
-    platforms: [android]
+    since: {android: "5.4.0", iphone: "6.1.0", ipad: "6.1.0"}
+    platforms: [android, iphone, ipad]
     availability: creation
 
   - name: data
@@ -442,7 +451,6 @@ properties:
         See also: [url](Titanium.UI.WebView.url) and [html](Titanium.UI.WebView.html).
     type: [Titanium.Blob, Titanium.Filesystem.File]
 
-
   - name: disableBounce
     summary: |
         Determines whether the view will bounce when scrolling to the edge of the scrollable region.
@@ -451,6 +459,16 @@ properties:
     type: Boolean
     default: false
     platforms: [iphone, ipad]
+    
+  - name: disableContextMenu
+    summary: Determines whether or not the webview should not be able to display the context menu.
+    description: | 
+        Set to `true` to disable the context menu. Note that disabling the context menu will
+        also disable the text selection on iOS.
+    type: Boolean
+    default: false
+    platforms: [iphone, ipad, android]
+    since: "6.1.0"
 
   - name: enableJavascriptInterface
     summary: Enable adding javascript interfaces internally to webview prior to JELLY_BEAN_MR1 (Android 4.2)
@@ -543,8 +561,7 @@ properties:
   - name: loading
     summary: Indicates if the webview is loading content.
     type: Boolean
-
-
+    platforms: [iphone, ipad]
 
   - name: onCreateWindow
     summary: |
@@ -686,9 +703,13 @@ properties:
 
   - name: userAgent
     summary: The User-Agent header used by the web view when requesting content.
+    description: |
+        On the iOS platform, this is not per-webview. Once you have set this property for a webview 
+        it will not change for same. But while creating new webview it can be changed to new user agent.
     type: String
     default: System default user-agent value.
-    platforms: [android]
+    platforms: [android, iphone, ipad]
+    since: {android: "2.0.0", iphone: "6.1.0", ipad: "6.1.0"}
 
   - name: willHandleTouches
     summary: Explicitly specifies if this web view handles touches.
@@ -724,6 +745,19 @@ properties:
     platforms: [android]
     since: "3.2.0"
     default: true
+    
+  - name: requestHeaders
+    summary: Sets extra request headers for this web view to use on subsequent URL requests.
+    description: |
+        Setting this property allows you to set custom headers to the URL requests.
+        The parameter will be key-value pairs: `{"Custom-field1":"value1", "Custom-field2":"value2"}`
+        
+        On Android you should avoid Calling `setRequestHeaders()` right after `createWebView()`. Use the `requestHeaders` property
+        inside `createWebView()` or put it inside the window `open` event.
+    type: Dictionary
+    platforms: [android,iphone,ipad]
+    since: "6.1.0"
+
 
 examples:
   - title: Basic Web View to External URL 

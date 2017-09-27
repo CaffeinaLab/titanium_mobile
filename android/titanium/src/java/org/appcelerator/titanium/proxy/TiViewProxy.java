@@ -59,7 +59,7 @@ import android.view.ViewAnimationUtils;
 	"borderColor", "borderRadius", "borderWidth",
 
 	// layout / dimension (size/width/height have custom accessors)
-	"left", "top", "right", "bottom", "layout", "zIndex",
+	"left", "top", "right", "bottom", "layout", "zIndex", TiC.PROPERTY_CENTER,
 
 	// accessibility
 	TiC.PROPERTY_ACCESSIBILITY_HINT, TiC.PROPERTY_ACCESSIBILITY_LABEL, TiC.PROPERTY_ACCESSIBILITY_VALUE,
@@ -70,7 +70,8 @@ import android.view.ViewAnimationUtils;
 	"softKeyboardOnFocus", "transform", "elevation", "touchTestId",
 	"translationX", "translationY", "translationZ", "rotation", "rotationX", "rotationY", "scaleX", "scaleY",
 
-	TiC.PROPERTY_TRANSITION_NAME
+	TiC.PROPERTY_TOUCH_FEEDBACK, TiC.PROPERTY_TOUCH_FEEDBACK_COLOR, TiC.PROPERTY_TRANSITION_NAME,
+	TiC.PROPERTY_HIDDEN_BEHAVIOR
 })
 public abstract class TiViewProxy extends KrollProxy implements Handler.Callback
 {
@@ -115,9 +116,11 @@ public abstract class TiViewProxy extends KrollProxy implements Handler.Callback
 		pendingAnimationLock = new Object();
 
 		defaultValues.put(TiC.PROPERTY_TOUCH_ENABLED, true);
+		defaultValues.put(TiC.PROPERTY_SOUND_EFFECTS_ENABLED, true);
 		defaultValues.put(TiC.PROPERTY_BACKGROUND_REPEAT, false);
 		defaultValues.put(TiC.PROPERTY_VISIBLE, true);
 		defaultValues.put(TiC.PROPERTY_ENABLED, true);
+		defaultValues.put(TiC.PROPERTY_HIDDEN_BEHAVIOR, View.INVISIBLE);
 	}
 
 	@Override
@@ -554,34 +557,43 @@ public abstract class TiViewProxy extends KrollProxy implements Handler.Callback
 
 	/**
 	 * Adds a child to this view proxy.
-	 * @param child The child view proxy to add.
+	 * @param args The child view proxy/proxies to add.
 	 * @module.api
 	 */
 	@Kroll.method
-	public void add(TiViewProxy child)
+	public void add(Object args)
 	{
-		if (child == null) {
+		if (args == null) {
 			Log.e(TAG, "Add called with a null child");
 			return;
 		}
-
 		if (children == null) {
 			children = new ArrayList<TiViewProxy>();
 		}
-
-		if (peekView() != null) {
-			if (TiApplication.isUIThread()) {
-				handleAdd(child);
-				return;
+		if (args instanceof Object[]) {
+			for (Object arg : (Object[]) args) {
+				if (arg instanceof TiViewProxy) {
+					add((TiViewProxy) arg);
+				} else {
+					Log.w(TAG, "add() unsupported array object: " + arg.getClass().getSimpleName());
+				}
 			}
-
-			TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_ADD_CHILD), child);
-
+		} else if (args instanceof TiViewProxy) {
+			TiViewProxy child = (TiViewProxy) args;
+			if (peekView() != null) {
+				if (TiApplication.isUIThread()) {
+					handleAdd(child);
+					return;
+				}
+				TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_ADD_CHILD), child);
+			} else {
+				children.add(child);
+				child.parent = new WeakReference<TiViewProxy>(this);
+			}
+			//TODO zOrder
 		} else {
-			children.add(child);
-			child.parent = new WeakReference<TiViewProxy>(this);
+			Log.w(TAG, "add() unsupported argument type: " + args.getClass().getSimpleName());
 		}
-		//TODO zOrder
 	}
 
 	@Kroll.method
@@ -729,7 +741,32 @@ public abstract class TiViewProxy extends KrollProxy implements Handler.Callback
 			}
 		}
 	}
+	
+	/**
+	* Returns the view by the given ID.
+	* @module.api
+	*/
+	@Kroll.method
+	public TiViewProxy getViewById(String id)
+	{
+		if (children != null) {
+			for (TiViewProxy child : children) {
+				if (child.children != null && child.children.size() > 0) {
+					TiViewProxy parentChild = child.getViewById(id);
+					if (parentChild != null) {
+						return parentChild;
+					}
+				}
 
+				if (child.hasProperty(TiC.PROPERTY_ID) && child.getProperty(TiC.PROPERTY_ID).equals(id)) {
+					return child;
+				}
+			}
+		}
+
+		return null;
+	}
+	
 	public void handleRemove(TiViewProxy child)
 	{
 		if (children != null) {

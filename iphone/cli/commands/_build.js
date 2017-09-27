@@ -14,7 +14,7 @@
 var appc = require('node-appc'),
 	async = require('async'),
 	bufferEqual = require('buffer-equal'),
-	Builder = require('titanium-sdk/lib/builder'),
+	Builder = require('node-titanium-sdk/lib/builder'),
 	CleanCSS = require('clean-css'),
 	crypto = require('crypto'),
 	cyan = require('colors').cyan,
@@ -24,13 +24,13 @@ var appc = require('node-appc'),
 	fs = require('fs'),
 	humanize = require('humanize'),
 	ioslib = require('ioslib'),
-	jsanalyze = require('titanium-sdk/lib/jsanalyze'),
+	jsanalyze = require('node-titanium-sdk/lib/jsanalyze'),
 	moment = require('moment'),
 	net = require('net'),
 	path = require('path'),
 	PNG = require('pngjs').PNG,
 	spawn = require('child_process').spawn,
-	ti = require('titanium-sdk'),
+	ti = require('node-titanium-sdk'),
 	util = require('util'),
 	uuid = require('node-uuid'),
 	wrench = require('wrench'),
@@ -926,7 +926,7 @@ iOSBuilder.prototype.configOptionOutputDir = function configOptionOutputDir(orde
 
 	return {
 		abbr: 'O',
-		desc: __('the output directory when using %s', 'dist-adhoc'.cyan),
+		desc: __('the output directory when using %s or %s', 'dist-appstore'.cyan, 'dist-adhoc'.cyan),
 		hint: 'dir',
 		order: order,
 		prompt: function (callback) {
@@ -1434,6 +1434,26 @@ iOSBuilder.prototype.initTiappSettings = function initTiappSettings() {
 			.shift();
 		var globalBuildSettings = ext.objs.XCBuildConfiguration[globalCfgId].buildSettings;
 
+		// check that the PP UUID is correct
+		var pps = [];
+		if (cli.argv.target === 'device') {
+			pps = this.iosInfo.provisioning.development;
+		} else if (cli.argv.target === 'dist-appstore') {
+			pps = this.iosInfo.provisioning.distribution;
+		} else if (cli.argv.target === 'dist-adhoc') {
+			pps = [].concat(this.iosInfo.provisioning.adhoc, this.iosInfo.provisioning.enterprise).filter(function (p) { return p; });
+		}
+
+		function getPPbyUUID(ppuuid) {
+			return pps
+				.filter(function (p) {
+					if (!p.expired && !p.managed && p.uuid === ppuuid) {
+						return true;
+					}
+				})
+				.shift();
+		}
+
 		// find our targets
 		ext.project.targets.forEach(function (t) {
 			var targetName = t.comment;
@@ -1575,28 +1595,9 @@ iOSBuilder.prototype.initTiappSettings = function initTiappSettings() {
 					}
 				}
 
-				// check that the PP UUID is correct
+				// find the selected provisioning profile
 				var ppuuid = tiappTargets[targetName].ppUUIDs[cli.argv.target];
-				var pps = [];
-				var pp;
-
-				function getPPbyUUID() {
-					return pps
-						.filter(function (p) {
-							if (!p.expired && !p.managed && p.uuid === ppuuid) {
-								return true;
-							}
-						})
-						.shift();
-				}
-
-				if (cli.argv.target === 'device') {
-					pps = this.iosInfo.provisioning.development;
-					pp = getPPbyUUID();
-				} else if (cli.argv.target === 'dist-appstore' || cli.argv.target === 'dist-adhoc') {
-					pps = [].concat(this.iosInfo.provisioning.distribution, this.iosInfo.provisioning.adhoc);
-					pp = getPPbyUUID();
-				}
+				var pp = getPPbyUUID(ppuuid);
 
 				if (!pp) {
 					logger.error(__('iOS extension "%s" target "%s" has invalid provisioning profile UUID in tiapp.xml.', projectName, targetName));
@@ -3655,6 +3656,21 @@ iOSBuilder.prototype.createXcodeProject = function createXcodeProject(next) {
 	hook(xcodeProject, next);
 };
 
+iOSBuilder.prototype.mergePlist = function mergePlist(src, dest) {
+	return (function merge(src, dest) {
+		Object.keys(src).forEach(function (prop) {
+			if (!/^\+/.test(prop)) {
+				if (Object.prototype.toString.call(src[prop]) === '[object Object]') {
+					dest.hasOwnProperty(prop) || (dest[prop] = {});
+					merge(src[prop], dest[prop]);
+				} else {
+					dest[prop] = src[prop];
+				}
+			}
+		});
+	})(src, dest);
+}
+
 iOSBuilder.prototype._embedCapabilitiesAndWriteEntitlementsPlist = function _embedCapabilitiesAndWriteEntitlementsPlist(plist, dest, isExtension, next) {
 	var caps = this.tiapp.ios.capabilities,
 		parent = path.dirname(dest);
@@ -3724,7 +3740,7 @@ iOSBuilder.prototype.writeEntitlementsPlist = function writeEntitlementsPlist(ne
 			if (target === 'device') {
 				return getPP(provisioning.development, uuid);
 			} else if (target === 'dist-appstore' || target === 'dist-adhoc') {
-				return getPP(provisioning.distribution, uuid) || getPP(provisioning.adhoc, uuid);
+				return getPP(provisioning.distribution, uuid) || getPP(provisioning.adhoc, uuid) || getPP(provisioning.enterprise, uuid);
 			}
 		}(this.iosInfo.provisioning, this.target, this.provisioningProfileUUID));
 
@@ -3732,6 +3748,11 @@ iOSBuilder.prototype.writeEntitlementsPlist = function writeEntitlementsPlist(ne
 	if (fs.existsSync(entitlementsFile)) {
 		this.logger.info(__('Found custom entitlements: %s', entitlementsFile.cyan));
 		plist = new appc.plist(entitlementsFile);
+	}
+
+	// tiapp.xml entitlements
+	if (this.tiapp.ios.entitlements) {
+		this.mergePlist(this.tiapp.ios.entitlements, plist);
 	}
 
 	// if we have a provisioning profile, make sure some entitlement settings are correct set
@@ -3895,24 +3916,11 @@ iOSBuilder.prototype.writeInfoPlist = function writeInfoPlist() {
 		delete plist.UILaunchStoryboardName;
 	}
 
-	function merge(src, dest) {
-		Object.keys(src).forEach(function (prop) {
-			if (!/^\+/.test(prop)) {
-				if (Object.prototype.toString.call(src[prop]) === '[object Object]') {
-					dest.hasOwnProperty(prop) || (dest[prop] = {});
-					merge(src[prop], dest[prop]);
-				} else {
-					dest[prop] = src[prop];
-				}
-			}
-		});
-	}
-
 	// if the user has a Info.plist in their project directory, consider that a custom override
 	if (fs.existsSync(customInfoPlistFile)) {
 		this.logger.info(__('Copying custom Info.plist from project directory'));
 		var custom = new appc.plist().parse(fs.readFileSync(customInfoPlistFile).toString());
-		merge(custom, plist);
+		this.mergePlist(custom, plist);
 	}
 
 	// tiapp.xml settings override the default and custom Info.plist
@@ -3988,7 +3996,7 @@ iOSBuilder.prototype.writeInfoPlist = function writeInfoPlist() {
 	}
 
 	// custom Info.plist from the tiapp.xml overrides everything
-	ios && ios.plist && merge(ios.plist, plist);
+	ios && ios.plist && this.mergePlist(ios.plist, plist);
 
 	// override the CFBundleIdentifier to the app id
 	plist.CFBundleIdentifier = this.tiapp.id;
@@ -4706,6 +4714,7 @@ iOSBuilder.prototype.copyResources = function copyResources(next) {
 		appIconRegExp = appIcon && new RegExp('^' + appIcon[1].replace(/\./g, '\\.') + '(.*)\\.png$'),
 		launchImageRegExp = /^(Default(-(Landscape|Portrait))?(-[0-9]+h)?(@[2-9]x)?)\.png$/,
 		launchLogoRegExp = /^LaunchLogo(?:@([23])x)?(?:~(iphone|ipad))?\.(?:png|jpg)$/,
+		bundleFileRegExp = /.+\.bundle\/.+/,
 
 		resourcesToCopy = {},
 		jsFiles = {},
@@ -4776,10 +4785,10 @@ iOSBuilder.prototype.copyResources = function copyResources(next) {
 							launchLogos[relPath] = info;
 
 						// if we are using app thinning, then don't copy the image, instead mark the
-						// image to be injected into the asset catalog
-						} else if (useAppThinning) {
+						// image to be injected into the asset catalog. Also, exclude images that are
+						// managed by their bundles.
+						} else if (useAppThinning && !relPath.match(bundleFileRegExp)) {
 							imageAssets[relPath] = info;
-
 						} else {
 							resourcesToCopy[relPath] = info;
 						}
@@ -6053,7 +6062,9 @@ iOSBuilder.prototype.processTiSymbols = function processTiSymbols() {
 			'#ifdef USE_TI_UILISTVIEW',
 			'#define USE_TI_UILABEL',
 			'#define USE_TI_UIBUTTON',
+			'#define USE_TI_UIBUTTONBAR',
 			'#define USE_TI_UIIMAGEVIEW',
+			'#define USE_TI_UIMASKEDIMAGE',
 			'#define USE_TI_UIPROGRESSBAR',
 			'#define USE_TI_UIACTIVITYINDICATOR',
 			'#define USE_TI_UISWITCH',
@@ -6062,6 +6073,9 @@ iOSBuilder.prototype.processTiSymbols = function processTiSymbols() {
 			'#define USE_TI_UITEXTAREA',
 			'#define USE_TI_UISCROLLABLEVIEW',
 			'#define USE_TI_UIIOSSTEPPER',
+			'#define USE_TI_UIIOSBLURVIEW',
+			'#define USE_TI_UIIOSLIVEPHOTOVIEW',
+			'#define USE_TI_UIIOSTABBEDBAR',
 			'#define USE_TI_UIPICKER',
 			'#endif'
 		);

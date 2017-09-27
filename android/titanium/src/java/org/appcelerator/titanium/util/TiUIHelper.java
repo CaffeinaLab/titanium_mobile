@@ -149,8 +149,8 @@ public class TiUIHelper
 	{ 
 		if (autoLink != null) {
 			//Default to Ti.UI.AUTOLINK_NONE
-			boolean success = Linkify.addLinks(tv, TiConvert.toInt(autoLink, 16));
-			if (!success && tv.getText() instanceof Spanned) {
+			boolean success = Linkify.addLinks(tv, TiConvert.toInt(autoLink, 0) & Linkify.ALL);
+			if (success && tv.getText() instanceof Spanned) {
 				tv.setMovementMethod(LinkMovementMethod.getInstance());
 			}
 		}
@@ -415,7 +415,7 @@ public class TiUIHelper
 		try {
 			String[] fontFiles = mgr.list(customFontPath);
 			for (String f : fontFiles) {
-				if (f.toLowerCase() == fontFamily.toLowerCase() || f.toLowerCase().startsWith(fontFamily.toLowerCase() + ".")) {
+				if (f.toLowerCase().equals(fontFamily.toLowerCase()) || f.toLowerCase().startsWith(fontFamily.toLowerCase() + ".")) {
 					Typeface tf = Typeface.createFromAsset(mgr, customFontPath + "/" + f);
 					synchronized(mCustomTypeFaces) {
 						mCustomTypeFaces.put(fontFamily, tf);
@@ -1023,6 +1023,10 @@ public class TiUIHelper
 
 	public static void requestSoftInputChange(KrollProxy proxy, View view) 
 	{
+		if (proxy == null) {
+			return;
+		}
+		
 		int focusState = TiUIView.SOFT_KEYBOARD_DEFAULT_ON_FOCUS;
 		
 		if (proxy.hasProperty(TiC.PROPERTY_SOFT_KEYBOARD_ON_FOCUS)) {

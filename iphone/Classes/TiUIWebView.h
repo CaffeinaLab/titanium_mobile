@@ -30,6 +30,7 @@
     BOOL willHandleTouches;
     BOOL willHandleUrl;
     NSString* lastValidLoad;
+    NSArray *blacklistedURLs;
 }
 
 @property(nonatomic,readonly) id url;
@@ -43,10 +44,11 @@
 -(void)stopLoading;
 -(void)goBack;
 -(void)goForward;
--(BOOL)isLoading;
+-(BOOL)loading;
 -(BOOL)canGoBack;
 -(BOOL)canGoForward;
 -(void)reload;
+-(UIWebView*)webview;
 
 -(void)setHtml_:(NSString*)content withObject:(id)property;
 -(void)setAllowsLinkPreview_:(id)value;

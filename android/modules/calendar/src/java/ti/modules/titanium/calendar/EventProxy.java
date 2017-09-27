@@ -403,7 +403,11 @@ public class EventProxy extends KrollProxy {
 
 	public static ArrayList<EventProxy> queryEventsBetweenDates(long date1, long date2, CalendarProxy calendar)
 	{
-		return queryEventsBetweenDates(date1, date2, "calendar_id = ?", new String[]{ calendar.getId() });
+		if (Build.VERSION.SDK_INT >= 11) {
+			return queryEventsBetweenDates(date1, date2, "calendar_id=" + calendar.getId(), null);
+		} else {
+			return queryEventsBetweenDates(date1, date2, "Calendars._id=" + calendar.getId(), null);
+		}
 	}
 
 	@Kroll.method @Kroll.getProperty

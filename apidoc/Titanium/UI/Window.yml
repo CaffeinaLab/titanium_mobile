@@ -481,6 +481,7 @@ properties:
     default: false
     since: 6.0.0
     osver: {ios: {min: "8.0"}}
+    availability: creation
 
   - name: hidesBarsOnTap
     summary: Set this to true to hide the navigation bar on tap.
@@ -493,19 +494,7 @@ properties:
     default: false
     since: 6.0.0
     osver: {ios: {min: "8.0"}}
-
-  - name: hidesBarsWhenVerticallyCompact
-    summary: Set this to true to hide the navigation bar in a vertically compact environment.
-    description: |
-        When the value of this property is true, the navigation controller hides its navigation bar 
-        and toolbar when it transitions to a vertically compact environment. 
-        Upon returning to a vertically regular environment, the navigation controller automatically shows both bars again. 
-        In addition, unhandled taps in the content area cause the navigation controller to show both bars again.
-    platforms: [iphone, ipad]
-    type: Boolean
-    default: false
-    since: 6.0.0
-    osver: {ios: {min: "8.0"}}
+    availability: creation
 
   - name: hidesBarsWhenKeyboardAppears
     summary: Set this to true to hide the navigation bar when the keyboard appears.
@@ -517,6 +506,7 @@ properties:
     default: false
     since: 6.0.0
     osver: {ios: {min: "8.0"}}
+    availability: creation
 
   - name: left
     summary: Window's left position, in platform-specific units.
@@ -643,6 +633,7 @@ properties:
         This was separated from the <Ti.UI.Window.androidback> event. You need to define this
         callback if you explicitly want to override the back button behavior.
     type: Callback<Object>
+    platforms: [android]
   
   - name: orientationModes
     summary: |
@@ -1369,13 +1360,13 @@ description: |
 
     You can create this type of modal window on iPad with the following code snippet:
 
-        var nav = Ti.UI.iOS.createNavigationWindow({
+        var win = Ti.UI.iOS.createNavigationWindow({
             window: Ti.UI.createWindow({
-                title: "Modal-Window"
+                title: "Modal Window"
             })
         });
 
-        nav.open({
+        win.open({
             modal: true,
             modalTransitionStyle: Ti.UI.iOS.MODAL_TRANSITION_STYLE_FLIP_HORIZONTAL,
             modalStyle: Ti.UI.iOS.MODAL_PRESENTATION_FORMSHEET

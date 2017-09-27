@@ -54,14 +54,10 @@
         return currRule.calendarIdentifier;
     }
     else if ([key isEqualToString:@"end"]) {
-        EKRecurrenceEnd *end = currRule.recurrenceEnd;
-        NSDictionary *recurranceEnd = nil;
-        if (end.occurrenceCount > 0) {
-            recurranceEnd = [NSDictionary dictionaryWithObjectsAndKeys: NUMUINTEGER(end.occurrenceCount), @"occurrenceCount", nil];
-        } else if (end.endDate != nil) {
-            recurranceEnd = [NSDictionary dictionaryWithObjectsAndKeys: [TiUtils UTCDateForDate:end.endDate], @"endDate", nil];
-        }
-        return recurranceEnd;
+        EKRecurrenceEnd  *end = currRule.recurrenceEnd;
+        NSDictionary *recurrenceEnd = [NSDictionary dictionaryWithObjectsAndKeys:[TiUtils UTCDateForDate:end.endDate], @"endDate",
+                                       NUMUINTEGER(end.occurrenceCount), @"occurrenceCount", nil];
+        return recurrenceEnd;
     }
     else if ([key isEqualToString:@"frequency"]) {
         return NUMINT(currRule.frequency);

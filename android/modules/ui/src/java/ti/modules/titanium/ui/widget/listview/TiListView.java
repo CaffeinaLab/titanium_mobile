@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import android.view.MotionEvent;
 import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.common.Log;
@@ -54,10 +55,11 @@ import android.widget.FrameLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.util.AttributeSet;
 
 public class TiListView extends TiUIView implements OnSearchChangeListener {
 
-	private ListView listView;
+	private ListViewScrollEvent listView;
 	private TiBaseAdapter adapter;
 	private ArrayList<ListSectionProxy> sections;
 	private AtomicInteger itemTypeCount;
@@ -81,6 +83,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 	private boolean caseInsensitive;
 	private RelativeLayout searchLayout;
 	private static final String TAG = "TiListView";
+	private boolean canScroll = true;
 
 
 	/* We cache properties that already applied to the recycled list tiem in ViewItem.java
@@ -98,6 +101,35 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 	public static final int HEADER_FOOTER_TITLE_TYPE = 1;
 	public static final int BUILT_IN_TEMPLATE_ITEM_TYPE = 2;
 	public static final int CUSTOM_TEMPLATE_ITEM_TYPE = 3;
+
+	public class ListViewScrollEvent extends ListView {
+	    public ListViewScrollEvent(Context context) {
+	        super(context);
+	    }
+
+	    public ListViewScrollEvent(Context context, AttributeSet attrs) {
+	        super(context,attrs);
+	    }
+
+	    public ListViewScrollEvent(Context context, AttributeSet attrs, int defStyle) {
+	        super(context, attrs, defStyle);
+	    }
+
+	    //we need this protected method for scroll detection
+	    public int getVerticalScrollOffset() {
+	        return computeVerticalScrollOffset();
+	    }
+		
+		@Override
+		public boolean dispatchTouchEvent(MotionEvent ev) {
+			if (!canScroll) {
+				if (ev.getAction() == MotionEvent.ACTION_MOVE) {
+					return true;
+				}
+			}
+			return super.dispatchTouchEvent(ev);
+		}
+	}
 
 	class ListViewWrapper extends FrameLayout {
 		private boolean viewFocused = false;
@@ -179,9 +211,9 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 	}
 	
 	public class TiBaseAdapter extends BaseAdapter {
-
-		Activity context;
 		
+		Activity context;
+
 		public TiBaseAdapter(Activity activity) {
 			context = activity;
 		}
@@ -294,7 +326,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 		ListViewWrapper wrapper = new ListViewWrapper(activity);
 		wrapper.setFocusable(false);
 		wrapper.setFocusableInTouchMode(false);
-		listView = new ListView(activity);
+		listView = new ListViewScrollEvent(activity);
 		listView.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 		wrapper.addView(listView);
 		adapter = new TiBaseAdapter(activity);
@@ -318,6 +350,9 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 			private int _visibleItemCount = 0;
 			private boolean canFireScrollStart = true;
 			private boolean canFireScrollEnd = false;
+			private int mInitialScroll = 0;
+			private int scrollUp = 0;
+			private int newScrollUp = 0;
 
 			@Override
 			public void onScrollStateChanged(AbsListView view, int scrollState)
@@ -327,6 +362,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 					eventName = TiC.EVENT_SCROLLEND;
 					canFireScrollEnd = false;
 					canFireScrollStart = true;
+					newScrollUp = 0;
 				} else if (scrollState == OnScrollListener.SCROLL_STATE_TOUCH_SCROLL && canFireScrollStart) {
 					eventName = TiC.EVENT_SCROLLSTART;					
 					canFireScrollEnd = true;
@@ -366,6 +402,23 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 			{
 				_firstVisibleItem = firstVisibleItem;
 				_visibleItemCount = visibleItemCount;
+				int scrolledOffset = listView.getVerticalScrollOffset();
+				if (scrolledOffset != mInitialScroll) {
+					if (scrolledOffset > mInitialScroll) {
+						scrollUp = 1;
+					} else {
+						scrollUp = -1;
+					}
+					if (scrollUp != newScrollUp) {
+						KrollDict eventArgs = new KrollDict();
+						eventArgs.put("direction", (scrollUp > 0) ? "up" : "down");
+						eventArgs.put("velocity", 0);
+						eventArgs.put("targetContentOffset", 0);
+						fProxy.fireEvent(TiC.EVENT_SCROLLING, eventArgs, false);
+						newScrollUp = scrollUp;
+					}
+			        mInitialScroll = scrolledOffset;
+			    }
 			}
 		});
 		
@@ -374,9 +427,9 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 			listItemId = TiRHelper.getResource("layout.titanium_ui_list_item");
 			titleId = TiRHelper.getResource("id.titanium_ui_list_header_or_footer_title");
 			listContentId = TiRHelper.getResource("id.titanium_ui_list_item_content");
-			isCheck = TiRHelper.getResource("drawable.btn_check_buttonless_on_64");
-			hasChild = TiRHelper.getResource("drawable.btn_more_64");
-			disclosure = TiRHelper.getResource("drawable.disclosure_64");
+			isCheck = TiRHelper.getImageRessource("drawable.btn_check_buttonless_on");
+			hasChild = TiRHelper.getImageRessource("drawable.btn_more");
+			disclosure = TiRHelper.getImageRessource("drawable.disclosure");
 			accessory = TiRHelper.getResource("id.titanium_ui_list_item_accessoryType");
 		} catch (ResourceNotFoundException e) {
 			Log.e(TAG, "XML resources could not be found!!!", Log.DEBUG_MODE);
@@ -385,6 +438,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 		this.wrapper = wrapper;
 		setNativeView(wrapper);
 	}
+	
 	
 	public String getSearchText() {
 		return searchText;
@@ -470,7 +524,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 		if (d.containsKey(TiC.PROPERTY_TEMPLATES)) {
 			Object templates = d.get(TiC.PROPERTY_TEMPLATES);
 			if (templates != null) {
-				processTemplates(new KrollDict((HashMap)templates));
+				processTemplates(new KrollDict((HashMap) templates));
 			}
 		} 
 		
@@ -573,6 +627,10 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 		if (footerView == null) {
 			footerView = inflater.inflate(headerFooterId, null);
 			footerView.findViewById(titleId).setVisibility(View.GONE);
+		}
+		
+		if (d.containsKeyAndNotNull(TiC.PROPERTY_CAN_SCROLL)) {
+			canScroll = TiConvert.toBoolean(d.get(TiC.PROPERTY_CAN_SCROLL), true);
 		}
 
 		//Have to add header and footer before setting adapter
@@ -720,6 +778,8 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 				dividerHeight = height;
 				listView.setDividerHeight(height);
 			}
+		} else if (key.equals(TiC.PROPERTY_CAN_SCROLL)) {
+			canScroll = TiConvert.toBoolean(newValue, true);
 		} else {
 			super.propertyChanged(key, oldValue, newValue, proxy);
 		}
@@ -756,7 +816,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 	protected void processTemplates(KrollDict templates) {
 		for (String key : templates.keySet()) {
 			//Here we bind each template with a key so we can use it to look up later
-			KrollDict properties = new KrollDict((HashMap)templates.get(key));
+			KrollDict properties = new KrollDict((HashMap) templates.get(key));
 			TiListViewTemplate template = new TiListViewTemplate(key, properties);
 			//Set type to template, for recycling purposes.
 			template.setType(getItemType());
@@ -766,7 +826,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 		}
 	}
 	
-	public View layoutHeaderOrFooterView (TiViewProxy viewProxy) {
+	public View layoutHeaderOrFooterView(TiViewProxy viewProxy) {
 		TiUIView tiView = viewProxy.peekView();
 		if (tiView != null) {
 			TiViewProxy parentProxy = viewProxy.getParent();
@@ -778,6 +838,10 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 				}
 			}
 		} else {
+			TiViewProxy listViewProxy = getProxy();
+			if ((listViewProxy != null) && (listViewProxy.getActivity() != null)) {
+				viewProxy.setActivity(listViewProxy.getActivity());
+			}
 			tiView = viewProxy.forceCreateView();
 		}
 		View outerView = tiView.getOuterView();

@@ -372,6 +372,17 @@ TI_INLINE void waitForMemoryPanicCleared();   //WARNING: This must never be run 
 	}
 }
 
+- (BOOL)application:(UIApplication *)application shouldAllowExtensionPointIdentifier:(UIApplicationExtensionPointIdentifier)extensionPointIdentifier
+{
+    BOOL allowsCustomKeyboard = [TiUtils boolValue:[[TiApp tiAppProperties] objectForKey:@"allow-custom-keyboards"] def:YES];
+    
+    if ([extensionPointIdentifier isEqualToString:UIApplicationKeyboardExtensionPointIdentifier] && !allowsCustomKeyboard) {
+        return NO;
+    }
+        
+    return YES;
+}
+
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions_
 {
 	started = [NSDate timeIntervalSinceReferenceDate];
@@ -663,7 +674,9 @@ TI_INLINE void waitForMemoryPanicCleared();   //WARNING: This must never be run 
 {
     //FunctionName();
     //Forward the callback
-    [self application:application didReceiveRemoteNotification:userInfo];
+    if ([self respondsToSelector:@selector(application:didReceiveRemoteNotification:)]) {
+        [self application:application didReceiveRemoteNotification:userInfo];
+    }
     
     //This only here for Simulator builds.
     
@@ -1048,7 +1061,7 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
 	[userActivityDict setObject:dict forKey:@"UIApplicationLaunchOptionsUserActivityKey"];
 	[launchOptions setObject:userActivityDict forKey:UIApplicationLaunchOptionsUserActivityDictionaryKey];
 	
-    if (appBooted){
+    if (appBooted) {
         [[NSNotificationCenter defaultCenter] postNotificationName:kTiContinueActivity object:self userInfo:dict];
     } else {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -1177,8 +1190,7 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
     NSString *currentLocaleIdentifier = [[NSLocale currentLocale] localeIdentifier];
     NSString *currentDeviceInfo = [NSString stringWithFormat:@"%@/%@; %@; %@;",[currentDevice model],[currentDevice systemVersion],[currentDevice systemName],currentLocaleIdentifier];
     NSString *kTitaniumUserAgentPrefix = [NSString stringWithFormat:@"%s%s%s %s%s","Appc","eler","ator","Tita","nium"];
-    
-    return [[NSString stringWithFormat:@"%@/%s (%@)",kTitaniumUserAgentPrefix,TI_VERSION_STR,currentDeviceInfo] retain];
+    return [NSString stringWithFormat:@"%@/%s (%@)",kTitaniumUserAgentPrefix,TI_VERSION_STR,currentDeviceInfo];
 }
 
 - (NSString*)userAgent

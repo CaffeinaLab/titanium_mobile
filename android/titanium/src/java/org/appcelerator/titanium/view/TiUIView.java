@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.appcelerator.kroll.KrollDict;
+import org.appcelerator.kroll.KrollFunction;
+import org.appcelerator.kroll.KrollObject;
 import org.appcelerator.kroll.KrollPropertyChange;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.KrollProxyListener;
@@ -36,17 +38,23 @@ import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.view.ViewCompat;
 import android.text.TextUtils;
 import android.util.Pair;
 import android.util.SparseArray;
+import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.KeyEvent;
@@ -80,7 +88,7 @@ public abstract class TiUIView
 
 	private static final boolean HONEYCOMB_OR_GREATER = (Build.VERSION.SDK_INT >= 11);
 	private static final boolean LOLLIPOP_OR_GREATER = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP);
-	private static final boolean LOWER_THAN_JELLYBEAN = (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN);
+	private static final boolean LOWER_THAN_JELLYBEAN = (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2);
 
 	private static final int LAYER_TYPE_SOFTWARE = 1;
 	private static final String TAG = "TiUIView";
@@ -147,11 +155,12 @@ public abstract class TiUIView
 
 	//to maintain sync visibility between borderview and view. Default is visible
 	private int visibility = View.VISIBLE;
+	private int hiddenBehavior = View.INVISIBLE;
 
 	protected GestureDetector detector = null;
 
 	private AtomicBoolean bLayoutPending = new AtomicBoolean();
-
+	private AtomicBoolean bTransformPending = new AtomicBoolean();
 
 	/**
 	 * Constructs a TiUIView object with the associated proxy.
@@ -346,7 +355,7 @@ public abstract class TiUIView
 	public void animate()
 	{
 		View outerView = getOuterView();
-		if (outerView == null) {
+		if (outerView == null || bTransformPending.get()) {
 			return;
 		}
 
@@ -511,9 +520,23 @@ public abstract class TiUIView
 	protected void startTransformAfterLayout(final View v)
 	{
 		final TiViewProxy p = this.proxy;
+		bTransformPending.set(true);
 		OnGlobalLayoutListener layoutListener = new OnGlobalLayoutListener() {
 			public void onGlobalLayout()
 			{
+				animBuilder.setCallback(new KrollFunction() {
+					public Object call(KrollObject krollObject, HashMap args) {
+						return null;
+					}
+					public Object call(KrollObject krollObject, Object[] args) {
+						return null;
+					}
+					public void callAsync(KrollObject krollObject, HashMap args) {}
+					public void callAsync(KrollObject krollObject, Object[] args) {
+						bTransformPending.set(false);
+						proxy.handlePendingAnimation(true);
+					}
+				});
 				animBuilder.start(p, v);
 				try {
 					if (Build.VERSION.SDK_INT < TiC.API_LEVEL_JELLY_BEAN) {
@@ -770,6 +793,8 @@ public abstract class TiUIView
 		} else if (key.startsWith(TiC.PROPERTY_BACKGROUND_PADDING)) {
 			Log.i(TAG, key + " not yet implemented.");
 		} else if (key.equals(TiC.PROPERTY_OPACITY)
+			|| key.equals(TiC.PROPERTY_TOUCH_FEEDBACK_COLOR)
+			|| key.equals(TiC.PROPERTY_TOUCH_FEEDBACK)
 			|| key.startsWith(TiC.PROPERTY_BACKGROUND_PREFIX)
 			|| key.startsWith(TiC.PROPERTY_BORDER_PREFIX)) {
 			// Update first before querying.
@@ -784,7 +809,12 @@ public abstract class TiUIView
 			boolean hasGradient = hasGradient(d);
 			boolean nativeViewNull = (nativeView == null);
 
-			boolean requiresCustomBackground = hasImage || hasRepeat || hasColorState || hasBorder || hasGradient;
+			boolean requiresCustomBackground = hasImage || hasColorState || hasBorder || hasGradient;
+
+			// PROPERTY_BACKGROUND_REPEAT is implicitly passed as false though not used in JS. So check the truth value and proceed.
+			if (!requiresCustomBackground) {
+				requiresCustomBackground = requiresCustomBackground && d.optBoolean(TiC.PROPERTY_BACKGROUND_REPEAT, false);
+			}
 
 			if (!requiresCustomBackground) {
 				if (background != null) {
@@ -796,20 +826,11 @@ public abstract class TiUIView
 				if (d.containsKeyAndNotNull(TiC.PROPERTY_BACKGROUND_COLOR)) {
 					Integer bgColor = TiConvert.toColor(d, TiC.PROPERTY_BACKGROUND_COLOR);
 					if (!nativeViewNull) {
-						nativeView.setBackgroundColor(bgColor);
-						// A bug only on Android 2.3 (TIMOB-14311).
-						if (Build.VERSION.SDK_INT < TiC.API_LEVEL_HONEYCOMB && proxy.hasProperty(TiC.PROPERTY_OPACITY)) {
-							setOpacity(TiConvert.toFloat(proxy.getProperty(TiC.PROPERTY_OPACITY), 1f));
+						if (canApplyTouchFeedback(d)) {
+							applyTouchFeedback(bgColor, d.containsKey(TiC.PROPERTY_TOUCH_FEEDBACK_COLOR) ? TiConvert.toColor(d, TiC.PROPERTY_TOUCH_FEEDBACK_COLOR) : null);
+						} else {
+							nativeView.setBackgroundColor(bgColor);
 						}
-						nativeView.postInvalidate();
-					}
-				} else {
-					if (key.equals(TiC.PROPERTY_OPACITY)) {
-						setOpacity(TiConvert.toFloat(newValue, 1f));
-					}
-					if (!nativeViewNull) {
-						nativeView.setBackgroundDrawable(null);
-						nativeView.postInvalidate();
 					}
 				}
 			} else {
@@ -855,14 +876,9 @@ public abstract class TiUIView
 				}
 
 				applyCustomBackground();
-
-				if (key.equals(TiC.PROPERTY_OPACITY)) {
-					setOpacity(TiConvert.toFloat(newValue, 1f));
-				} else if (Build.VERSION.SDK_INT < TiC.API_LEVEL_HONEYCOMB && proxy.hasProperty(TiC.PROPERTY_OPACITY)) {
-					// A bug only on Android 2.3 (TIMOB-14311).
-					setOpacity(TiConvert.toFloat(proxy.getProperty(TiC.PROPERTY_OPACITY), 1f));
-				}
-
+			}
+			if (key.equals(TiC.PROPERTY_OPACITY)) {
+				setOpacity(TiConvert.toFloat(newValue, 1f));
 			}
 			if (!nativeViewNull) {
 				nativeView.postInvalidate();
@@ -902,9 +918,9 @@ public abstract class TiUIView
 				ViewCompat.setTranslationZ(getOuterView(), TiConvert.toFloat(newValue));
 			}
 		} else if (key.equals(TiC.PROPERTY_TRANSITION_NAME)) {
-		    if (LOLLIPOP_OR_GREATER && (nativeView != null)) {
-		        ViewCompat.setTransitionName(nativeView, TiConvert.toString(newValue));
-		    }
+			if (LOLLIPOP_OR_GREATER && (nativeView != null)) {
+				ViewCompat.setTransitionName(nativeView, TiConvert.toString(newValue));
+			}
 		} else if (key.equals(TiC.PROPERTY_SCALE_X)) {
 			if (getOuterView() != null) {
 				ViewCompat.setScaleX(getOuterView(), TiConvert.toFloat(newValue));
@@ -925,8 +941,10 @@ public abstract class TiUIView
 			if (getOuterView() != null) {
 				ViewCompat.setRotationY(getOuterView(), TiConvert.toFloat(newValue));
 			}
+		} else if (key.equals(TiC.PROPERTY_HIDDEN_BEHAVIOR)) {
+			hiddenBehavior = TiConvert.toInt(newValue, View.INVISIBLE);
 		} else if (Log.isDebugModeEnabled()) {
-		    Log.d(TAG, "Unhandled property key: " + key, Log.DEBUG_MODE);
+			Log.d(TAG, "Unhandled property key: " + key, Log.DEBUG_MODE);
 		}
 	}
 
@@ -963,20 +981,32 @@ public abstract class TiUIView
 		} else if (d.containsKey(TiC.PROPERTY_BACKGROUND_COLOR) && !nativeViewNull) {
 			bgColor = TiConvert.toColor(d, TiC.PROPERTY_BACKGROUND_COLOR);
 
-			// Set the background color on the view directly only
-			// if there is no border. If a border is present we must
-			// use the TiBackgroundDrawable.
-			if (hasBorder(d)) {
-				if (background == null) {
-					applyCustomBackground(false);
-				}
-				background.setBackgroundColor(bgColor);
-
+			
+			if (canApplyTouchFeedback(d)) {
+				applyTouchFeedback(bgColor, d.containsKey(TiC.PROPERTY_TOUCH_FEEDBACK_COLOR) ? TiConvert.toColor(d, TiC.PROPERTY_TOUCH_FEEDBACK_COLOR) : null);
 			} else {
-				nativeView.setBackgroundColor(bgColor);
+				// Set the background color on the view directly only
+				// if there is no border. If a border is present we must
+				// use the TiBackgroundDrawable.
+				if (hasBorder(d)) {
+					if (background == null) {
+						applyCustomBackground(false);
+					}
+					background.setBackgroundColor(bgColor);
+				} else {
+					nativeView.setBackgroundColor(bgColor);
+				}
 			}
 		}
 
+		if (d.containsKey(TiC.PROPERTY_HIDDEN_BEHAVIOR) && !nativeViewNull) {
+			Object hidden = d.get(TiC.PROPERTY_HIDDEN_BEHAVIOR);
+			if (hidden != null){
+				hiddenBehavior = TiConvert.toInt(hidden, View.INVISIBLE);
+			} else {
+				hiddenBehavior = View.INVISIBLE;
+			}
+		}
 		if (d.containsKey(TiC.PROPERTY_VISIBLE) && !nativeViewNull) {
 			Object visible = d.get(TiC.PROPERTY_VISIBLE);
 			if (visible != null) {
@@ -1050,8 +1080,8 @@ public abstract class TiUIView
 		}
 
 		if (LOLLIPOP_OR_GREATER && !nativeViewNull
-		        && d.containsKeyAndNotNull(TiC.PROPERTY_TRANSITION_NAME)) {
-		    ViewCompat.setTransitionName(nativeView, d.getString(TiC.PROPERTY_TRANSITION_NAME));
+				&& d.containsKeyAndNotNull(TiC.PROPERTY_TRANSITION_NAME)) {
+			ViewCompat.setTransitionName(nativeView, d.getString(TiC.PROPERTY_TRANSITION_NAME));
 		}
 	}
 
@@ -1090,6 +1120,33 @@ public abstract class TiUIView
 			}
 			nativeView.setBackgroundDrawable(background);
 		}
+	}
+
+	/**
+	 * @param props View's property dictionary
+	 * @return true if touch feedback can be applied. 
+	 */
+	protected boolean canApplyTouchFeedback(@NonNull KrollDict props) {
+		return ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) && props.optBoolean(TiC.PROPERTY_TOUCH_FEEDBACK, false) && !hasBorder(props));
+	}
+	
+	/**
+	 * Applies touch feedback. Should check canApplyTouchFeedback() before calling this. 
+	 * @param backgroundColor The background color of the view. 
+	 * @param rippleColor The ripple color.
+	 */
+	private void applyTouchFeedback(@NonNull Integer backgroundColor, @Nullable Integer rippleColor) {
+		if (rippleColor == null) {
+			Context context = TiApplication.getInstance();
+			TypedValue attribute = new TypedValue();
+			if (context.getTheme().resolveAttribute(android.R.attr.colorControlHighlight, attribute, true)) {
+				rippleColor = context.getResources().getColor(attribute.resourceId);
+			} else {
+				throw new RuntimeException("android.R.attr.colorControlHighlight cannot be resolved into Drawable");
+			}
+		}
+		RippleDrawable rippleDrawable = new RippleDrawable(ColorStateList.valueOf(rippleColor), new ColorDrawable(backgroundColor), null);
+		nativeView.setBackground(rippleDrawable);
 	}
 
 	public void onFocusChange(final View v, boolean hasFocus)
@@ -1172,16 +1229,29 @@ public abstract class TiUIView
 				}
 				d = null;
 			}
+			nativeView.setOnFocusChangeListener(null);
 			nativeView = null;
 			borderView = null;
 			if (proxy != null) {
 				proxy.setModelListener(null);
 			}
 		}
+		if (children != null) {
+			for (TiUIView child : children) {
+				remove(child);
+			}
+			children.clear();
+		}
+		children = null;
+		proxy = null;
+		layoutParams = null;
 	}
 
 	private void setVisibility(int visibility)
 	{
+		if (visibility == View.INVISIBLE) {
+			visibility = hiddenBehavior;
+		}
 		this.visibility = visibility;
 		if (borderView != null) {
 			borderView.setVisibility(this.visibility);
@@ -1505,7 +1575,7 @@ public abstract class TiUIView
 			@Override
 			public boolean onDoubleTap(MotionEvent e)
 			{
-				if (proxy.hierarchyHasListener(TiC.EVENT_DOUBLE_TAP) || proxy.hierarchyHasListener(TiC.EVENT_DOUBLE_CLICK)) {
+				if (proxy != null && (proxy.hierarchyHasListener(TiC.EVENT_DOUBLE_TAP) || proxy.hierarchyHasListener(TiC.EVENT_DOUBLE_CLICK))) {
 					boolean handledTap = fireEvent(TiC.EVENT_DOUBLE_TAP, dictFromEvent(e));
 					boolean handledClick = fireEvent(TiC.EVENT_DOUBLE_CLICK, dictFromEvent(e));
 					return handledTap || handledClick;
@@ -1517,7 +1587,7 @@ public abstract class TiUIView
 			public boolean onSingleTapConfirmed(MotionEvent e)
 			{
 				Log.d(TAG, "TAP, TAP, TAP on " + proxy, Log.DEBUG_MODE);
-				if (proxy.hierarchyHasListener(TiC.EVENT_SINGLE_TAP)) {
+				if (proxy != null && proxy.hierarchyHasListener(TiC.EVENT_SINGLE_TAP)) {
 					return fireEvent(TiC.EVENT_SINGLE_TAP, dictFromEvent(e));
 					// Moved click handling to the onTouch listener, because a single tap is not the
 					// same as a click. A single tap is a quick tap only, whereas clicks can be held
@@ -1536,7 +1606,7 @@ public abstract class TiUIView
 			public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY)
 			{
 				Log.d(TAG, "SWIPE on " + proxy, Log.DEBUG_MODE);
-				if (proxy.hierarchyHasListener(TiC.EVENT_SWIPE)) {
+				if (proxy != null && proxy.hierarchyHasListener(TiC.EVENT_SWIPE)) {
 					KrollDict data = dictFromEvent(e2);
 					if (Math.abs(velocityX) > Math.abs(velocityY)) {
 						data.put(TiC.EVENT_PROPERTY_DIRECTION, velocityX > 0 ? "right" : "left");
@@ -1553,7 +1623,7 @@ public abstract class TiUIView
 			{
 				Log.d(TAG, "LONGPRESS on " + proxy, Log.DEBUG_MODE);
 
-				if (proxy.hierarchyHasListener(TiC.EVENT_LONGPRESS)) {
+				if (proxy != null && proxy.hierarchyHasListener(TiC.EVENT_LONGPRESS)) {
 					fireEvent(TiC.EVENT_LONGPRESS, dictFromEvent(e));
 				}
 			}
@@ -1570,7 +1640,7 @@ public abstract class TiUIView
 					lastUpEvent.put(TiC.EVENT_PROPERTY_Y, (double) event.getY());
 				}
 
-				if (proxy.hierarchyHasListener(TiC.EVENT_PINCH)) {
+				if (proxy != null && proxy.hierarchyHasListener(TiC.EVENT_PINCH)) {
 					scaleDetector.onTouchEvent(event);
 					if (scaleDetector.isInProgress()) {
 						pointersDown = 0;
@@ -1599,7 +1669,7 @@ public abstract class TiUIView
 					}
 				} else if (event.getAction() == MotionEvent.ACTION_UP) {
 					// Don't fire twofingertap if there is no listener
-					if (proxy.hierarchyHasListener(TiC.EVENT_TWOFINGERTAP) && pointersDown == 1) {
+					if (proxy != null && proxy.hierarchyHasListener(TiC.EVENT_TWOFINGERTAP) && pointersDown == 1) {
 						float x = event.getX();
 						float y = event.getY();
 						if (x >= 0 && x < touchable.getWidth() && y >= 0 && y < touchable.getHeight()) {
@@ -1613,7 +1683,7 @@ public abstract class TiUIView
 
 				String motionEvent = motionEvents.get(event.getAction());
 				if (motionEvent != null) {
-					if (proxy.hierarchyHasListener(motionEvent)) {
+					if (proxy != null && proxy.hierarchyHasListener(motionEvent)) {
 						fireEvent(motionEvent, dictFromEvent(event));
 					}
 				}
@@ -1635,9 +1705,12 @@ public abstract class TiUIView
 
 		if (proxy.hasProperty(TiC.PROPERTY_TOUCH_ENABLED)) {
 			boolean enabled = TiConvert.toBoolean(proxy.getProperty(TiC.PROPERTY_TOUCH_ENABLED), true);
-			if (!enabled) {
-				touchable.setEnabled(false);
-			}
+			touchable.setEnabled(enabled);
+		}
+		//Checking and setting touch sound for view
+		if (proxy.hasProperty(TiC.PROPERTY_SOUND_EFFECTS_ENABLED)) {
+			boolean soundEnabled = TiConvert.toBoolean(proxy.getProperty(TiC.PROPERTY_SOUND_EFFECTS_ENABLED), true);
+			touchable.setSoundEffectsEnabled(soundEnabled);
 		}
 		registerTouchEvents(touchable);
 
@@ -1653,7 +1726,6 @@ public abstract class TiUIView
 		doSetClickable(touchable);
 
 	}
-
 
 	public void registerForKeyPress()
 	{
@@ -1714,7 +1786,7 @@ public abstract class TiUIView
 					switch (keyCode) {
 						case KeyEvent.KEYCODE_ENTER:
 						case KeyEvent.KEYCODE_DPAD_CENTER:
-							if (proxy.hasListeners(TiC.EVENT_CLICK)) {
+							if (proxy != null && proxy.hasListeners(TiC.EVENT_CLICK)) {
 								fireEvent(TiC.EVENT_CLICK, null);
 								return true;
 							}
@@ -1860,6 +1932,9 @@ public abstract class TiUIView
 	}
 
 	public boolean fireEvent(String eventName, KrollDict data, boolean bubbles) {
+		if (proxy == null) {
+			return false;
+		}
 		if (data == null && additionalEventData != null) {
 			data = new KrollDict(additionalEventData);
 		} else if (additionalEventData != null) {

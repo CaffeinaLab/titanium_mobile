@@ -92,9 +92,10 @@ typedef void(^EKEventStoreRequestAccessCompletionHandler)(BOOL granted, NSError 
 
 -(void)dealloc
 {
+	RELEASE_TO_NIL(store);
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
 	[super dealloc];
-    [store release];
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
+	
 }
 
 -(void)didReceiveMemoryWarning:(NSNotification*)notification
@@ -431,6 +432,12 @@ MAKE_SYSTEM_PROP(ATTENDEE_TYPE_ROOM, EKParticipantTypeRoom);
 MAKE_SYSTEM_PROP(ATTENDEE_TYPE_RESOURCE, EKParticipantTypeResource);
 MAKE_SYSTEM_PROP(ATTENDEE_TYPE_GROUP, EKParticipantTypeGroup);
 
+MAKE_SYSTEM_PROP(SOURCE_TYPE_LOCAL, EKSourceTypeLocal);
+MAKE_SYSTEM_PROP(SOURCE_TYPE_EXCHANGE, EKSourceTypeExchange);
+MAKE_SYSTEM_PROP(SOURCE_TYPE_CALDAV, EKSourceTypeCalDAV);
+MAKE_SYSTEM_PROP(SOURCE_TYPE_MOBILEME, EKSourceTypeMobileMe);
+MAKE_SYSTEM_PROP(SOURCE_TYPE_SUBSCRIBED, EKSourceTypeSubscribed);
+MAKE_SYSTEM_PROP(SOURCE_TYPE_BIRTHDAYS, EKSourceTypeBirthdays);
 @end
 
 #endif

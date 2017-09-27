@@ -1551,6 +1551,7 @@ public abstract class TiBaseActivity extends AppCompatActivity
 
 		if (orientationListener != null) {
 			orientationListener.disable();
+			orientationListener = null;
 		}
 
 		super.onDestroy();
@@ -1576,11 +1577,14 @@ public abstract class TiBaseActivity extends AppCompatActivity
 		//LW windows
 		if (window == null && view != null) {
 			view.releaseViews();
+			view.release();
 			view = null;
 		}
 
 		if (window != null) {
 			window.closeFromActivity(isFinishing);
+			window.releaseViews();
+			window.releaseKroll();
 			window = null;
 		}
 

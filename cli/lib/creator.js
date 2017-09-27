@@ -19,7 +19,7 @@ var appc = require('node-appc'),
 	fs = require('fs'),
 	i18n = appc.i18n(__dirname),
 	path = require('path'),
-	ti = require('titanium-sdk'),
+	ti = require('node-titanium-sdk'),
 	wrench = require('wrench'),
 	__ = i18n.__,
 	__n = i18n.__n;
@@ -340,7 +340,7 @@ Creator.prototype.configOptionPlatforms = function configOptionPlatforms(order) 
 		}
 
 		if (goodValues.mobileweb) {
-			logger.warn(__('MobileWeb platform has been deprecated and will be removed in 7.0.0.'));
+			logger.warn(__('MobileWeb platform has been deprecated in 5.4.0 and will be removed in 7.0.0.'));
 		}
 
 		callback(null, Object.keys(goodValues).join(','));

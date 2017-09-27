@@ -441,7 +441,7 @@ public class TiUIScrollView extends TiUIView
 		}
 		if (key.equals(TiC.PROPERTY_CONTENT_OFFSET)) {
 			setContentOffset(newValue);
-			scrollTo(offsetX, offsetY);
+			scrollTo(offsetX, offsetY, false);
 		}
 		if (key.equals(TiC.PROPERTY_CAN_CANCEL_EVENTS)) {
 			View view = getNativeView();
@@ -582,9 +582,10 @@ public class TiUIScrollView extends TiUIView
 		View nativeView = getNativeView();
 		if (nativeView instanceof TiVerticalScrollView) {
 			return ((TiVerticalScrollView) nativeView).layout;
-		} else {
+		} else if (nativeView instanceof TiHorizontalScrollView) {
 			return ((TiHorizontalScrollView) nativeView).layout;
 		}
+		return null;
 	}
 	
 	@Override
@@ -615,10 +616,21 @@ public class TiUIScrollView extends TiUIView
 		return mScrollingEnabled;
 	}
 
-	public void scrollTo(int x, int y)
+	public void scrollTo(int x, int y, boolean smoothScroll)
 	{
-		getNativeView().scrollTo(x, y);
-		getNativeView().computeScroll();
+		View view = getNativeView();
+		if (smoothScroll) {
+			if (view instanceof TiHorizontalScrollView) {
+				TiHorizontalScrollView scrollView = (TiHorizontalScrollView) view;
+				scrollView.smoothScrollTo(TiConvert.toTiDimension(x, -1).getAsPixels(view), TiConvert.toTiDimension(y, -1).getAsPixels(view));
+			} else if (view instanceof TiVerticalScrollView) {
+				TiVerticalScrollView scrollView = (TiVerticalScrollView) view;
+				scrollView.smoothScrollTo(TiConvert.toTiDimension(x, -1).getAsPixels(view), TiConvert.toTiDimension(y, -1).getAsPixels(view));
+			}
+		} else {
+			view.scrollTo(TiConvert.toTiDimension(x, -1).getAsPixels(view), TiConvert.toTiDimension(y, -1).getAsPixels(view));
+		}
+		view.computeScroll();
 	}
 
 	public void scrollToBottom()

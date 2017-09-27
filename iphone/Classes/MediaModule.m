@@ -573,13 +573,21 @@ MAKE_SYSTEM_PROP(VIDEO_TIME_OPTION_EXACT,MPMovieTimeOptionExact);
 #ifdef USE_TI_MEDIAREQUESTAUTHORIZATION
 -(void)requestAuthorization:(id)args
 {
-    DEPRECATED_REPLACED(@"Media.requestAuthorization", @"5.1.0", @"Media.requestAudioPermissions");
-    [self requestAudioPermissions:args];
+    DEPRECATED_REPLACED(@"Media.requestAudioPermissions", @"5.1.0", @"Media.requestAudioRecorderPermissions");
+    [self requestAudioRecorderPermissions:args];
 }
 #endif
 
 #ifdef USE_TI_MEDIAHASAUDIOPERMISSIONS
 -(id)hasAudioPermissions:(id)unused
+{
+    DEPRECATED_REPLACED(@"Media.hasAudioPermissions", @"6.1.0", @"Media.hasAudioRecorderPermissions");
+    return [self hasAudioRecorderPermissions:unused];
+}
+#endif
+
+#if defined(USE_TI_MEDIAHASAUDIORECORDERPERMISSIONS) || defined(USE_TI_MEDIAHASAUDIOPERMISSIONS)
+-(id)hasAudioRecorderPermissions:(id)unused
 {
     NSString *microphonePermission = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSMicrophoneUsageDescription"];
     
@@ -593,6 +601,14 @@ MAKE_SYSTEM_PROP(VIDEO_TIME_OPTION_EXACT,MPMovieTimeOptionExact);
 
 #ifdef USE_TI_MEDIAREQUESTAUDIOPERMISSIONS
 -(void)requestAudioPermissions:(id)args
+{
+    DEPRECATED_REPLACED(@"Media.requestAudioPermissions", @"6.1.0", @"Media.requestAudioRecorderPermissions");
+    [self requestAudioRecorderPermissions:args];
+}
+#endif
+
+#if defined(USE_TI_MEDIAREQUESTAUDIORECORDERPERMISSIONS) || defined(USE_TI_MEDIAREQUESTAUDIOPERMISSIONS) || defined(USE_TI_MEDIAREQUESTAUTHORIZATION)
+-(void)requestAudioRecorderPermissions:(id)args
 {
     ENSURE_SINGLE_ARG(args, KrollCallback);
     KrollCallback * callback = args;
@@ -1026,9 +1042,9 @@ MAKE_SYSTEM_PROP(VIDEO_TIME_OPTION_EXACT,MPMovieTimeOptionExact);
         [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
             BOOL granted = (status == PHAuthorizationStatusAuthorized);
             NSString *errorMessage = granted ? @"" : @"The user denied access to use the photo gallery.";
-            KrollEvent *invocationEvent = [[KrollEvent alloc] initWithCallback:callback
+            KrollEvent *invocationEvent = [[[KrollEvent alloc] initWithCallback:callback
                                                                    eventObject:[TiUtils dictionaryWithCode:(granted ? 0 : 1) message:errorMessage]
-                                                                    thisObject:self];
+                                                                    thisObject:self] autorelease];
             [[callback context] enqueue:invocationEvent];
         }];
     }, YES);
@@ -1353,17 +1369,17 @@ MAKE_SYSTEM_PROP(VIDEO_TIME_OPTION_EXACT,MPMovieTimeOptionExact);
 
 -(void)dispatchCallback:(NSArray*)args
 {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	NSString *type = [args objectAtIndex:0];
-	id object = [args objectAtIndex:1];
-	id listener = [args objectAtIndex:2];
-	// we have to give our modal picker view time to 
-	// dismiss with animation or if you do anything in a callback that 
-	// attempt to also touch a modal controller, you'll get into deep doodoo
-	// wait for the picker to dismiss with animation
-	[NSThread sleepForTimeInterval:0.5];
-	[self _fireEventToListener:type withObject:object listener:listener thisObject:nil];
-	[pool release];
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    NSString *type = [args objectAtIndex:0];
+    id object = [args objectAtIndex:1];
+    id listener = [args objectAtIndex:2];
+    // we have to give our modal picker view time to
+    // dismiss with animation or if you do anything in a callback that
+    // attempt to also touch a modal controller, you'll get into deep doodoo
+    // wait for the picker to dismiss with animation
+    [NSThread sleepForTimeInterval:0.5];
+    [self _fireEventToListener:type withObject:object listener:listener thisObject:nil];
+    [pool release];
     
 #ifndef TI_USE_KROLL_THREAD
     //TIMOB-24389: Force the heap to be GC'd to avoid Ti.Blob references to be dumped.
@@ -2023,8 +2039,10 @@ MAKE_SYSTEM_PROP(VIDEO_TIME_OPTION_EXACT,MPMovieTimeOptionExact);
                 if ( (ourRect.size.width > editedImage.size.width) || (ourRect.size.height > editedImage.size.height) ){
                     UIGraphicsBeginImageContext(ourRect.size);
                     CGContextRef context = UIGraphicsGetCurrentContext();
+                    CGContextSetRGBFillColor(context, 0.0, 0.0, 0.0, 1.0);
+                    CGContextFillRect(context, CGRectMake(0.0, 0.0, ourRect.size.width, ourRect.size.height));
                     
-                    // translated rectangle for drawing sub image 
+                    // translated rectangle for drawing sub image
                     CGRect drawRect = CGRectMake(-ourRect.origin.x, -ourRect.origin.y, originalImage.size.width, originalImage.size.height);
                     
                     // clip to the bounds of the image context
@@ -2041,7 +2059,7 @@ MAKE_SYSTEM_PROP(VIDEO_TIME_OPTION_EXACT,MPMovieTimeOptionExact);
             }
             
             if (resultImage == nil) {
-                resultImage = (editedImage != nil) ? [TiUtils adjustRotation:editedImage] : [TiUtils adjustRotation:originalImage];
+                resultImage = [TiUtils adjustRotation:editedImage ?: originalImage];
             }
             
             media = [[[TiBlob alloc] _initWithPageContext:[self pageContext]] autorelease];
@@ -2071,7 +2089,7 @@ MAKE_SYSTEM_PROP(VIDEO_TIME_OPTION_EXACT,MPMovieTimeOptionExact);
     if (cropRect != nil) {
         [dictionary setObject:cropRect forKey:@"cropRect"];
     }
-	
+    
     [self sendPickerSuccess:dictionary];
 }
 

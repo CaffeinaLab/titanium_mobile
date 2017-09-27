@@ -74,7 +74,7 @@ properties:
     description: |
         Multiple autolink values can be combined with a bitwise OR. For example:
             
-            label.autoLink = AUTOLINK_MAP_ADDRESSES|AUTOLINK_PHONE_NUMBERS;
+            label.autoLink = Ti.UI.AUTOLINK_MAP_ADDRESSES|Ti.UI.AUTOLINK_PHONE_NUMBERS;
             
         Prior to Release 3.0, this field used platform-specific constants. These are now
         deprecated in favor of the `AUTOLINK` constants.
@@ -157,17 +157,22 @@ properties:
     since: "5.4.0"
         
   - name: maxLines
-    summary: Makes the label at most this many lines tall.
-    platforms: [android]
+    summary: Makes the label at most this many lines tall. 
+    platforms: [android, iphone, ipad]
     type: Number
-    since: "4.1.0"
+    since: {android: "4.1.0", iphone: "6.1.0", ipad: "6.1.0"}
     
   - name: minimumFontSize
     summary: Minimum font size when the font is sized based on the contents. 
     description: |
-        Enables font scaling to fit and forces the label content to be limited to a single line.
+        When set to a valid font size, this property enables single-line mode and the font
+        will be auto-downscaled so that its text will fit the label's width if necessary.
+        Will not downscale the font lower than the assigned minimum font size.
+
+        When set to less than or equal to zero, the font auto-downscaling feature will be disabled.
     type: Number
-    platforms: [iphone, ipad]
+    since: {iphone: "0.8.0", ipad: "0.8.0", android: "6.1.0"}
+    platforms: [android, iphone, ipad]
     
   - name: shadowColor
     summary: Shadow color of the [text](Titanium.UI.Label.text), as a color name or hex triplet.

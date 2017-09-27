@@ -57,18 +57,16 @@
 
 -(CGSize)sizeForFont:(CGFloat)suggestedWidth
 {
-    NSAttributedString *value = [label attributedText];
-    CGSize maxSize = CGSizeMake(suggestedWidth<=0 ? 480 : suggestedWidth, 10000);
-    CGSize shadowOffset = [label shadowOffset];
-    requiresLayout = YES;
-    if ((suggestedWidth > 0) && [[label text] hasSuffix:@" "]) {
-        // (CGSize)sizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size lineBreakMode:(UILineBreakMode)lineBreakMode method truncates
-        // the string having trailing spaces when given size parameter width is equal to the expected return width, so we adjust it here.
-        maxSize.width += 0.00001;
-    }
-    CGSize returnVal = [value boundingRectWithSize:maxSize
-                                           options:NSStringDrawingUsesLineFragmentOrigin
-                                           context:nil].size;
+	NSAttributedString *value = [label attributedText];
+	CGSize maxSize = CGSizeMake(suggestedWidth<=0 ? 480 : suggestedWidth, 10000);
+	CGSize shadowOffset = [label shadowOffset];
+	requiresLayout = YES;
+	if ((suggestedWidth > 0) && [[label text] hasSuffix:@" "]) {
+		// (CGSize)sizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size lineBreakMode:(UILineBreakMode)lineBreakMode method truncates
+		// the string having trailing spaces when given size parameter width is equal to the expected return width, so we adjust it here.
+		maxSize.width += 0.00001;
+	}
+    CGSize returnVal = [value size];
     CGSize size = CGSizeMake(ceilf(returnVal.width), ceilf(returnVal.height));
     if (shadowOffset.width > 0)
     {
@@ -414,6 +412,15 @@
         [self padLabel];
     }
 }
+
+-(void)setMaxLines_:(id)value
+{
+	ENSURE_TYPE(value, NSNumber);
+	[[self label] setNumberOfLines:[TiUtils floatValue:value]];
+	[self padLabel];
+	[(TiViewProxy *)[self proxy] contentsWillChange];
+}
+
 -(void)setText_:(id)text
 {
     [[self label] setText:[TiUtils stringValue:text]];

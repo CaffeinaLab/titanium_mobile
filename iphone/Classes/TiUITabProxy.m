@@ -168,8 +168,14 @@
 
 - (void)closeWindowProxy:(TiWindowProxy*)window animated:(BOOL)animated
 {
-    [window retain];
-    UIViewController *windowController = [[window hostingController] retain];
+	// TIMOB-20623: This can happen when the application is currently
+	// terminating and the rootWindow property has already been deallocated.
+	if (!rootWindow) {
+		return;
+	}
+
+	[window retain];
+	UIViewController *windowController = [[window hostingController] retain];
     
 	// Manage the navigation controller stack
 	UINavigationController* navController = [[self rootController] navigationController];
@@ -183,8 +189,8 @@
 	// and not let the window simply close by itself. this will ensure that we tell the
 	// tab that we're doing that
 	[window close:nil];
-    RELEASE_TO_NIL_AUTORELEASE(window);
-    RELEASE_TO_NIL(windowController);
+	RELEASE_TO_NIL_AUTORELEASE(window);
+	RELEASE_TO_NIL(windowController);
 }
 
 -(void)popGestureStateHandler:(UIGestureRecognizer *)recognizer
@@ -217,6 +223,7 @@
 		[self setTitle:[self valueForKey:@"title"]];
 		[self setIcon:[self valueForKey:@"icon"]];
 		[self setBadge:[self valueForKey:@"badge"]];
+		[self setBadgeColor:[self valueForKey:@"badgeColor"]];
 		[self setIconInsets:[self valueForKey:@"iconInsets"]];
 		controllerStack = [[NSMutableArray alloc] init];
 		[controllerStack addObject:[self rootController]];
@@ -496,16 +503,27 @@
 	}
 	ENSURE_UI_THREAD_0_ARGS;
 	
-    UIViewController* rootController = [rootWindow hostingController];
+	UIViewController* rootController = [rootWindow hostingController];
 	id badgeValue = [TiUtils stringValue:[self valueForKey:@"badge"]];
+#if IS_XCODE_8
+	id badgeColor = [self valueForKey:@"badgeColor"];
+#endif
 	id iconInsets = [self valueForKey:@"iconInsets"];
 	id icon = [self valueForKey:@"icon"];
 	
+	// System-icons
 	if ([icon isKindOfClass:[NSNumber class]])
 	{
 		int value = [TiUtils intValue:icon];
 		UITabBarItem *newItem = [[UITabBarItem alloc] initWithTabBarSystemItem:value tag:value];
 		[newItem setBadgeValue:badgeValue];
+
+#if IS_XCODE_8
+		if (badgeColor != nil && [TiUtils isIOS10OrGreater]) {
+			[newItem setBadgeColor:[[TiUtils colorValue:badgeColor] color]];
+		}
+#endif
+
 		[rootController setTabBarItem:newItem];
 		[newItem release];
 		systemTab = YES;
@@ -574,6 +592,12 @@
             [ourItem setImageInsets:[self calculateIconInsets:iconInsets]];
         }
     }
+    
+#if IS_XCODE_8
+	if (badgeColor != nil && [TiUtils isIOS10OrGreater]) {
+		[ourItem setBadgeColor:[[TiUtils colorValue:badgeColor] color]];
+	}
+#endif
     
     [ourItem setBadgeValue:badgeValue];
     [rootController setTabBarItem:ourItem];
@@ -702,7 +726,11 @@
 	[self updateTabBarItem];
 }
 
-
+-(void)setBadgeColor:(id)value
+{
+	[self replaceValue:value forKey:@"badgeColor" notification:NO];
+	[self updateTabBarItem];
+}
 
 -(void)willChangeSize
 {

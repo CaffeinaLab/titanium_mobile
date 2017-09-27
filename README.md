@@ -1,8 +1,7 @@
 Appcelerator Titanium Mobile
 ============================
-| Travis CI  | Jenkins CI |
-|------------|------------|
-| [![Build Status](https://travis-ci.org/appcelerator/titanium_mobile.svg?branch=master)](https://travis-ci.org/appcelerator/titanium_mobile) | [![Build Status](https://jenkins.appcelerator.org/buildStatus/icon?job=titanium_mobile_master_SG)](https://jenkins.appcelerator.org/job/titanium_mobile_master_SG/) |
+
+[![Build Status](https://jenkins.appcelerator.org/buildStatus/icon?job=appcelerator/titanium_mobile/master)](https://jenkins.appcelerator.org/job/appcelerator/job/titanium_mobile/job/master/)
 
 Welcome to the Titanium open source project.  Titanium provides
 a platform for web developers to build cross-platform, native mobile applications
@@ -23,11 +22,11 @@ With Titanium, you use JavaScript to code your application.  Titanium's compiler
 your application code into an efficient native executable for each target mobile platform.
 Titanium writes native code so you don't have to. :)
 
-- Native apps built using web technologies
-- Apps are compiled and run locally (offline available)
-- Full support for HTML5 and CSS3
-- Support for all native platform UI controls
+- Native apps built using JavaScript
+- Apps are compiled and run locally with full offline support
+- Support for native platform UI controls
 - Third-party JavaScript support such as jQuery, Dojo, etc.
+- Support for Web views incorporating HTML5, CSS etc.
 - Support for in-application SQL database
 - Support for Geolocation (compass, geolocation, forward/reverse lookup)
 - Support for Camera (taking Photos, playing and recording Video)
@@ -113,8 +112,8 @@ Building Locally
 Previously Titanium used scons and python scripts to build the SDK.
 If you'd like to build the SDK locally, we've replaced scons with some Node.JS scripts. Typical usage would be:
 
-	cd build
 	npm install
+	cd build
 	node scons.js build --android-ndk /opt/android-ndk --android-sdk /opt/android-sdk
 	node scons.js package
 	node scons.js install
@@ -125,8 +124,8 @@ The build command will look for Android NDK and SDK using $ANDROID_NDK and $ANDR
 
 You can use the `-h` flag to display the full list of comands and options.
 
-	cd build
 	npm install
+	cd build
 	node scons.js build [platform1] [platform2] --android-ndk /opt/android-ndk --android-sdk /opt/android-sdk /Users/build/android-sdk-macosx
 	node scons.js package [platform1] [platform2]
 	node scons.js install

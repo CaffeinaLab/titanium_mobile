@@ -8,16 +8,16 @@
 const
 	appc = require('node-appc'),
 	async = require('async'),
-	Builder = require('titanium-sdk/lib/builder'),
+	Builder = require('node-titanium-sdk/lib/builder'),
 	CleanCSS = require('clean-css'),
 	ejs = require('ejs'),
 	fields = require('fields'),
 	fs = require('fs'),
 	i18n = appc.i18n(__dirname),
-	jsanalyze = require('titanium-sdk/lib/jsanalyze'),
+	jsanalyze = require('node-titanium-sdk/lib/jsanalyze'),
 	mobilewebPackageJson = appc.pkginfo.package(module),
 	path = require('path'),
-	ti = require('titanium-sdk'),
+	ti = require('node-titanium-sdk'),
 	util = require('util'),
 	wrench = require('wrench'),
 	__ = i18n.__,
@@ -114,7 +114,7 @@ MobileWebBuilder.prototype.validate = function validate(logger, config, cli) {
 	this.deployType = cli.argv['deploy-type'];
 	this.buildType = cli.argv['build-type'] || '';
 
-	this.logger.warn(__('MobileWeb platform has been deprecated and will be removed in 7.0.0.'));
+	this.logger.warn(__('MobileWeb platform has been deprecated in 5.4.0 and will be removed in 7.0.0.'));
 
 	switch (this.deployType) {
 		case 'production':
