@@ -30,6 +30,11 @@ LOCAL_JS_FILES := $(JS_FILES)
 # When setting v8_enable_i18n_support=0
 LOCAL_WHOLE_STATIC_LIBRARIES := libv8_libbase libv8_libplatform libv8_base libv8_nosnapshot
 
+# We need this because the current asm generates the following link error:
+# requires unsupported dynamic reloc R_ARM_REL32; recompile with -fPIC
+# Bug: 16853291
+LOCAL_LDFLAGS := -Wl,-Bsymbolic
+
 include $(BUILD_SHARED_LIBRARY)
 
 NDK_MODULE_PATH := $(LOCAL_PATH)/../ndk-modules
