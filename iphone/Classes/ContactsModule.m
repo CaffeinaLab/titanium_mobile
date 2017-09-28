@@ -357,11 +357,11 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
 	selectedPropertyCallback = [[args objectForKey:@"selectedProperty"] retain];
     if ([TiUtils isIOS9OrGreater]) {
         contactPicker = [[CNContactPickerViewController alloc] init];
-        [contactPicker setDelegate:self];
-        if (selectedPropertyCallback == nil) {
-            contactPicker.predicateForSelectionOfProperty = [NSPredicate predicateWithValue:NO];
-        }
-        
+	[contactPicker setDelegate:self];	
+	if (selectedPropertyCallback == nil) {
+      	    contactPicker.predicateForSelectionOfProperty = [NSPredicate predicateWithValue:NO];
+	}
+
         if (selectedPersonCallback == nil) {
             contactPicker.predicateForSelectionOfContact = [NSPredicate predicateWithValue:NO];
         }
@@ -373,8 +373,8 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
         if (fields != nil) {
             NSMutableArray* pickerFields = [NSMutableArray arrayWithCapacity:[fields count]];
             for (id field in fields) {
-				id property = nil;
-				if (property = [[[TiContactsPerson iOS9propertyKeys] allKeysForObject:field] objectAtIndex:0]) {
+                id property = nil;
+                if (property = [[[TiContactsPerson iOS9propertyKeys] allKeysForObject:field] objectAtIndex:0]) {
                     [pickerFields addObject:property];
                 }
             }
@@ -385,19 +385,17 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
         return;
         
     }
-	picker = [[ABPeoplePickerNavigationController alloc] init];
-	[picker setPeoplePickerDelegate:self];
-	
-    if ([TiUtils isIOS8OrGreater]) {
-        if (selectedPropertyCallback == nil) {
-            [picker setPredicateForSelectionOfProperty:[NSPredicate predicateWithValue:NO]];
-        }
-        
-        if (selectedPersonCallback == nil) {
-            [picker setPredicateForSelectionOfPerson:[NSPredicate predicateWithValue:NO]];
-        }
-    }
+    picker = [[ABPeoplePickerNavigationController alloc] init];
+    [picker setPeoplePickerDelegate:self];
     
+    if (selectedPropertyCallback == nil) {
+        [picker setPredicateForSelectionOfProperty:[NSPredicate predicateWithValue:NO]];
+    }
+	
+    if (selectedPersonCallback == nil) {
+        [picker setPredicateForSelectionOfPerson:[NSPredicate predicateWithValue:NO]];
+    }
+        
 	animated = [TiUtils boolValue:@"animated" properties:args def:YES];
 	
 	NSArray* fields = [args objectForKey:@"fields"];
@@ -420,14 +418,17 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
 
 // OK to do outside main thread
 -(TiContactsPerson*)getPersonByID:(id)arg
-{
+{	
 	if ([TiUtils isIOS9OrGreater]) {
 		DebugLog(@"This method is removed for iOS9 and greater.");
 		return nil;
 	}
-	ENSURE_SINGLE_ARG(arg, NSObject)
+	
+	ENSURE_SINGLE_ARG(arg, NSString)
+	
 	__block int idNum = [TiUtils intValue:arg];
 	__block BOOL validId = NO;	
+	
 	TiThreadPerformOnMainThread(^{
 		ABAddressBookRef ourAddressBook = [self addressBook];
 		if (ourAddressBook == NULL) {
@@ -435,27 +436,30 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
 		}
 		ABRecordRef record = NULL;
 		record = ABAddressBookGetPersonWithRecordID(ourAddressBook, idNum);
-		if (record != NULL)
-		{
+		if (record != NULL) {
 			validId = YES;
 		}
-    }, YES);
-	if (validId == YES)
-	{
+	}, YES);
+	
+	if (validId == YES) {
 		return [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext] recordId:idNum module:self] autorelease];
 	}
+	
 	return NULL;
 }
 
 -(TiContactsGroup*)getGroupByID:(id)arg
 {
+	ENSURE_SINGLE_ARG(arg, NSObject)
+
 	if ([TiUtils isIOS9OrGreater]) {
 		DebugLog(@"This method is removed for iOS9 and greater.");
 		return nil;
 	}
-	ENSURE_SINGLE_ARG(arg, NSObject)
+
 	__block int idNum = [TiUtils intValue:arg];
 	__block BOOL validId = NO;	
+	
 	TiThreadPerformOnMainThread(^{
 		ABAddressBookRef ourAddressBook = [self addressBook];
 		if (ourAddressBook == NULL) {
@@ -463,17 +467,16 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
 		}
 		ABRecordRef record = NULL;
 		record = ABAddressBookGetGroupWithRecordID(ourAddressBook, idNum);
-		if (record != NULL) 
-		{
+		if (record != NULL) {
 			validId = YES;
 		}
-    }, YES);
-	if (validId == YES)
-	{	
+    	}, YES);
+	
+	if (validId == YES) {	
 		return [[[TiContactsGroup alloc] _initWithPageContext:[self executionContext] recordId:idNum module:self] autorelease];
 	}
-	return NULL;
 	
+	return NULL;
 }
 
 //New in iOS9
@@ -483,12 +486,15 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
 		DebugLog(@"This method is only for iOS9 and greater.");
 		return nil;
 	}
+	
 	if (![NSThread isMainThread]) {
 		__block id result;
 		TiThreadPerformOnMainThread(^{result = [[self getPersonByIdentifier:arg] retain];}, YES);
 		return [result autorelease];
 	}
+	
 	ENSURE_SINGLE_ARG(arg, NSString)
+
 	CNContactStore *ourContactStore = [self contactStore];
 	if (ourContactStore == NULL) {
 		return nil;
@@ -499,13 +505,14 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
 	if (error) {
 		return nil;
 	}
+	
 	return [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext]
                                                  contactId:(CNMutableContact *)contact
                                                     module:self
                                                   observer:self] autorelease];
 }
 
-//New in iOS9
+// New in iOS9
 -(TiContactsGroup*)getGroupByIdentifier:(id)arg
 {
 	if (![TiUtils isIOS9OrGreater]) {
@@ -594,11 +601,12 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
 
 -(NSArray*)getAllPeople:(id)unused
 {
-	if (![NSThread isMainThread]) {
-		__block id result = nil;
-		TiThreadPerformOnMainThread(^{result = [[self getAllPeople:unused] retain];}, YES);
-		return [result autorelease];
-	}
+    if (![NSThread isMainThread]) {
+        __block id result = nil;
+	TiThreadPerformOnMainThread(^{result = [[self getAllPeople:unused] retain];}, YES);
+	
+	return [result autorelease];
+    }
 
     if ([TiUtils isIOS9OrGreater]) {
         CNContactStore *ourContactStore = [self contactStore];
@@ -614,13 +622,14 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
             TiContactsPerson* person = [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext] contactId:(CNMutableContact*)contact module:self observer:self] autorelease];
             [peopleRefs addObject:person];
         }];
-		RELEASE_TO_NIL(fetchRequest)
-        if (success) {
+	
+	RELEASE_TO_NIL(fetchRequest)
+        
+	if (success) {
             NSArray *people = [NSArray arrayWithArray:peopleRefs];
             RELEASE_TO_NIL(peopleRefs)
             return people;
-        }
-        else {
+        } else {
             DebugLog(@"%@", [TiUtils messageFromError:error]);
             RELEASE_TO_NIL(peopleRefs)
             return nil;
@@ -644,9 +653,8 @@ void CMExternalChangeCallback (ABAddressBookRef notifyAddressBook,CFDictionaryRe
         [people addObject:person];
     }	
     CFRelease(peopleRefs);
-    return people;
-    
 
+    return people;
 }
 
 -(NSArray*)getAllGroups:(id)unused
@@ -900,131 +908,114 @@ MAKE_SYSTEM_PROP(AUTHORIZATION_AUTHORIZED, kABAuthorizationStatusAuthorized);
 	}
 }
 
-//Deprecated in iOS 8
--(BOOL)peoplePickerNavigationController:(ABPeoplePickerNavigationController *)peoplePicker shouldContinueAfterSelectingPerson:(ABRecordRef)selectedPerson
-{
-	if (selectedPersonCallback) {
-		TiContactsPerson* person = nil;
-		if ([TiUtils isIOS8OrGreater] && (ABAddressBookGetAuthorizationStatus() != kABAuthorizationStatusAuthorized)) {
-			// In iOS 8 selected contact is returned without requiring user permission. But we cannot query metadata like recordid.
-			person = [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext] person:selectedPerson module:self] autorelease];
-		} else {
-			// iOS7 and below or iOS8 with permission granted.
-			ABRecordID id_ = ABRecordGetRecordID(selectedPerson);
-			person = [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext] recordId:id_ module:self] autorelease];
-		}
-		[self _fireEventToListener:@"selectedPerson"
-						withObject:[NSDictionary dictionaryWithObject:person forKey:@"person"]
-						  listener:selectedPersonCallback
-						thisObject:nil];
-		[[TiApp app] hideModalController:picker animated:animated];
-		return NO;
-	}
-	return YES;
-}
-
-//Deprecated in iOS 8
-- (BOOL)peoplePickerNavigationController:(ABPeoplePickerNavigationController *)peoplePicker shouldContinueAfterSelectingPerson:(ABRecordRef)person property:(ABPropertyID)property identifier:(ABMultiValueIdentifier)identifier
-{
-	if (selectedPropertyCallback) {
-		ABRecordID id_ = ABRecordGetRecordID(person);
-		TiContactsPerson *personObject = [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext] recordId:id_ module:self] autorelease];
-		NSString *propertyName = nil;
-		id value = [NSNull null];
-		id label = [NSNull null];
-
-		//if statement to handle undocumented ring and text tone property from apple
-		//only implemented in this method, since apple doesn't want people fooling around with these
-		//null values are accompanied. Only inform app that user selected this property in the peoplePicker
-		if (property == appleUndocumentedToneProperty)
-		{
-			if (identifier == appleUndocumentedRingToneIdentifier) {
-				propertyName = @"ringTone";
-			}
-			if (identifier == appleUndocumentedRingVibrationIdentifier) {
-				propertyName = @"ringVibration";
-			}
-			if (identifier == appleUndocumentedTextToneIdentifier) {
-				propertyName = @"textTone";
-			}
-			if (identifier == appleUndocumentedTextVibrationIdentifier) {
-				propertyName = @"textVibration";
-			}
-		}
-		else if (identifier == kABMultiValueInvalidIdentifier) {
-			propertyName = [[[TiContactsPerson contactProperties] allKeysForObject:[NSNumber numberWithInt:property]] objectAtIndex:0];
-
-			// Contacts is poorly-designed enough that we should worry about receiving NULL values for properties which are actually assigned.
-			CFTypeRef val = ABRecordCopyValue(person, property);
-			if (val != NULL) {
-				value = [[(id)val retain] autorelease];  // Force toll-free bridging & autorelease
-				CFRelease(val);
-			}
-		} else {
-			//birthdays for iOS8 is multivalue and NOT kABPersonBirthdayProperty only in DELEGATE, but undocumented in Apple
-			if ([TiUtils isIOS8OrGreater] && property == appleUndocumentedBirthdayProperty) {
-				CFTypeRef val = nil;
-				if (identifier == 0) {
-					propertyName = @"birthday";
-					val = ABRecordCopyValue(person, kABPersonBirthdayProperty);
-				} else {
-					propertyName = @"alternateBirthday";
-					val = ABRecordCopyValue(person, kABPersonAlternateBirthdayProperty);
-				}
-				if (val != NULL) {
-					value = [[(id)val retain] autorelease];  // Force toll-free bridging & autorelease
-					CFRelease(val);
-				}
-			} else {
-				propertyName = [[[TiContactsPerson multiValueProperties] allKeysForObject:[NSNumber numberWithInt:property]] objectAtIndex:0];
-				ABMultiValueRef multival = ABRecordCopyValue(person, property);
-				CFIndex index = ABMultiValueGetIndexForIdentifier(multival, identifier);
-
-				CFTypeRef val = ABMultiValueCopyValueAtIndex(multival, index);
-				if (val != NULL) {
-					value = [[(id)val retain] autorelease];  // Force toll-free bridging & autorelease
-					CFRelease(val);
-				}
-
-				CFStringRef CFlabel = ABMultiValueCopyLabelAtIndex(multival, index);
-				NSArray *labelKeys = [[TiContactsPerson multiValueLabels] allKeysForObject:(NSString *)CFlabel];
-				if ([labelKeys count] > 0) {
-					label = [NSString stringWithString:[labelKeys objectAtIndex:0]];
-				} else {
-					// Hack for Exchange and other 'cute' setups where there is no label associated with a multival property;
-					// in this case, force it to be the property name.
-					if (CFlabel != NULL) {
-						label = [NSString stringWithString:(NSString *)CFlabel];
-					}
-					// There may also be cases where we get a property from the system that we can't handle, because it's undocumented or not in the map.
-					else if (propertyName != nil) {
-						label = [NSString stringWithString:propertyName];
-					}
-				}
-				if (CFlabel != NULL) {
-					CFRelease(CFlabel);
-				}
-				CFRelease(multival);
-			}
-		}
-
-		NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:personObject, @"person", propertyName, @"property", value, @"value", label, @"label", nil];
-		[self _fireEventToListener:@"selectedProperty" withObject:dict listener:selectedPropertyCallback thisObject:nil];
-		[[TiApp app] hideModalController:picker animated:animated];
-		return NO;
-	}
-	return YES;
-}
 // Called after a person has been selected by the user. New in iOS 8
 - (void)peoplePickerNavigationController:(ABPeoplePickerNavigationController*)peoplePicker didSelectPerson:(ABRecordRef)person
 {
-    [self peoplePickerNavigationController:peoplePicker shouldContinueAfterSelectingPerson:person];
+    if (selectedPersonCallback) {
+        TiContactsPerson* personObject = nil;
+        if (ABAddressBookGetAuthorizationStatus() != kABAuthorizationStatusAuthorized) {
+            // In iOS 8 selected contact is returned without requiring user permission. But we cannot query metadata like recordid.
+            personObject = [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext] person:person module:self] autorelease];
+        } else {
+            // iOS7 and below or iOS8 with permission granted.
+            ABRecordID id_ = ABRecordGetRecordID(person);
+            personObject = [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext] recordId:id_ module:self] autorelease];
+        }
+        [self _fireEventToListener:@"selectedPerson"
+                        withObject:[NSDictionary dictionaryWithObject:personObject forKey:@"person"]
+                          listener:selectedPersonCallback
+                        thisObject:nil];
+        [[TiApp app] hideModalController:picker animated:animated];
+    }
 }
 
 // Called after a property has been selected by the user. New in iOS 8
 - (void)peoplePickerNavigationController:(ABPeoplePickerNavigationController*)peoplePicker didSelectPerson:(ABRecordRef)person property:(ABPropertyID)property identifier:(ABMultiValueIdentifier)identifier
 {
-    [self peoplePickerNavigationController:peoplePicker shouldContinueAfterSelectingPerson:person property:property identifier:identifier];
+    if (selectedPropertyCallback) {
+        ABRecordID id_ = ABRecordGetRecordID(person);
+        TiContactsPerson *personObject = [[[TiContactsPerson alloc] _initWithPageContext:[self executionContext] recordId:id_ module:self] autorelease];
+        NSString *propertyName = nil;
+        id value = [NSNull null];
+        id label = [NSNull null];
+        
+        //if statement to handle undocumented ring and text tone property from apple
+        //only implemented in this method, since apple doesn't want people fooling around with these
+        //null values are accompanied. Only inform app that user selected this property in the peoplePicker
+        if (property == appleUndocumentedToneProperty) {
+            if (identifier == appleUndocumentedRingToneIdentifier) {
+                propertyName = @"ringTone";
+            }
+            if (identifier == appleUndocumentedRingVibrationIdentifier) {
+                propertyName = @"ringVibration";
+            }
+            if (identifier == appleUndocumentedTextToneIdentifier) {
+                propertyName = @"textTone";
+            }
+            if (identifier == appleUndocumentedTextVibrationIdentifier) {
+                propertyName = @"textVibration";
+            }
+        } else if (identifier == kABMultiValueInvalidIdentifier) {
+            propertyName = [[[TiContactsPerson contactProperties] allKeysForObject:[NSNumber numberWithInt:property]] objectAtIndex:0];
+            
+            // Contacts is poorly-designed enough that we should worry about receiving NULL values for properties which are actually assigned.
+            CFTypeRef val = ABRecordCopyValue(person, property);
+            if (val != NULL) {
+                value = [[(id)val retain] autorelease];  // Force toll-free bridging & autorelease
+                CFRelease(val);
+            }
+        } else {
+            //birthdays for iOS8 is multivalue and NOT kABPersonBirthdayProperty only in DELEGATE, but undocumented in Apple
+            if (property == appleUndocumentedBirthdayProperty) {
+                CFTypeRef val = nil;
+                if (identifier == 0) {
+                    propertyName = @"birthday";
+                    val = ABRecordCopyValue(person, kABPersonBirthdayProperty);
+                } else {
+                    propertyName = @"alternateBirthday";
+                    val = ABRecordCopyValue(person, kABPersonAlternateBirthdayProperty);
+                }
+                if (val != NULL) {
+                    value = [[(id)val retain] autorelease];  // Force toll-free bridging & autorelease
+                    CFRelease(val);
+                }
+            } else {
+                propertyName = [[[TiContactsPerson multiValueProperties] allKeysForObject:[NSNumber numberWithInt:property]] objectAtIndex:0];
+                ABMultiValueRef multival = ABRecordCopyValue(person, property);
+                CFIndex index = ABMultiValueGetIndexForIdentifier(multival, identifier);
+                
+                CFTypeRef val = ABMultiValueCopyValueAtIndex(multival, index);
+                if (val != NULL) {
+                    value = [[(id)val retain] autorelease];  // Force toll-free bridging & autorelease
+                    CFRelease(val);
+                }
+                
+                CFStringRef CFlabel = ABMultiValueCopyLabelAtIndex(multival, index);
+                NSArray *labelKeys = [[TiContactsPerson multiValueLabels] allKeysForObject:(NSString *)CFlabel];
+                if ([labelKeys count] > 0) {
+                    label = [NSString stringWithString:[labelKeys objectAtIndex:0]];
+                } else {
+                    // Hack for Exchange and other 'cute' setups where there is no label associated with a multival property;
+                    // in this case, force it to be the property name.
+                    if (CFlabel != NULL) {
+                        label = [NSString stringWithString:(NSString *)CFlabel];
+                    }
+                    // There may also be cases where we get a property from the system that we can't handle, because it's undocumented or not in the map.
+                    else if (propertyName != nil) {
+                        label = [NSString stringWithString:propertyName];
+                    }
+                }
+                if (CFlabel != NULL) {
+                    CFRelease(CFlabel);
+                }
+                CFRelease(multival);
+            }
+        }
+        
+        NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:personObject, @"person", propertyName, @"property", value, @"value", label, @"label", nil];
+        [self _fireEventToListener:@"selectedProperty" withObject:dict listener:selectedPropertyCallback thisObject:nil];
+        [[TiApp app] hideModalController:picker animated:animated];
+    }
 }
 
 //iOS9 delegates

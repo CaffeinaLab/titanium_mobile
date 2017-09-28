@@ -538,7 +538,7 @@ iOSModuleBuilder.prototype.verifyBuildArch = function verifyBuildArch(next) {
 	}.bind(this));
 };
 
-iOSModuleBuilder.prototype.packageModule = function packageModule() {
+iOSModuleBuilder.prototype.packageModule = function packageModule(next) {
 	var dest = archiver('zip', {
 			forceUTC: true
 		}),
@@ -564,6 +564,7 @@ iOSModuleBuilder.prototype.packageModule = function packageModule() {
 		zipStream = fs.createWriteStream(moduleZipFullPath);
 		zipStream.on('close', function() {
 			console.error = origConsoleError;
+			next();
 		});
 		dest.catchEarlyExitAttached = true; // silence exceptions
 		dest.pipe(zipStream);
@@ -601,7 +602,8 @@ iOSModuleBuilder.prototype.packageModule = function packageModule() {
 		// 3. platform folder
 		if (fs.existsSync(this.platformDir)) {
 			this.dirWalker(this.platformDir, function (file) {
-				dest.append(fs.createReadStream(file), { name: path.join(moduleFolders, 'platform', path.relative(this.platformDir, file)) });
+				var stat = fs.statSync(file);
+				dest.append(fs.createReadStream(file), { name: path.join(moduleFolders, 'platform', path.relative(this.platformDir, file)), mode: stat.mode });
 			}.bind(this));
 		}
 

@@ -14,14 +14,18 @@
 @interface WebFont : NSObject {
 	NSString* family;
 	CGFloat size;
-    BOOL isSemiboldWeight;
+	BOOL isSemiboldWeight;
 	BOOL isBoldWeight;
+	BOOL isThinWeight;
+	BOOL isLightWeight;
+	BOOL isUltraLightWeight;
 	BOOL isNormalWeight;
-    BOOL isItalicStyle;
-    BOOL isNormalStyle;
+	BOOL isItalicStyle;
+	BOOL isNormalStyle;
+  
 	UIFont *font;
-    
-    NSString* textStyle;
+
+	NSString *textStyle;
 }
 
 /**
@@ -52,6 +56,21 @@
 @property(nonatomic) BOOL isNormalWeight;
 
 /**
+ Whether or not the font weight is thin.
+ */
+@property(nonatomic) BOOL isThinWeight;
+
+/**
+ Whether or not the font weight is light.
+ */
+@property(nonatomic) BOOL isLightWeight;
+
+/**
+ Whether or not the font weight is ultra light.
+ */
+@property(nonatomic) BOOL isUltraLightWeight;
+
+/**
  Whether or not the font style is italic.
  */
 @property(nonatomic) BOOL isItalicStyle;
@@ -70,6 +89,7 @@
  Provides access to the Text Style.
  */
 @property(nonatomic, readonly) NSString *textStyle;
+
 /**
  Returns underlying font object.
  @return The font
@@ -83,17 +103,13 @@
  @return _YES_ if the update operation succeeded, _NO_ otherwise.
  */
 -(BOOL)updateWithDict:(NSDictionary *)fontDict inherits:(WebFont *)inheritedFont;
+
 /**
  Indicates if the style specified by the string is a valid value for textStyle
  @param theStyle The String to check 
  @return _YES_ is it is a valid value for textStyle, _NO_ otherwise
  */
 -(BOOL)isValidTextStyle:(NSString*)theStyle;
-/**
- Returns table row font.
- @return The table row font.
- */
-+(WebFont *)tableRowFont;
 
 /**
  Returns the default text font.

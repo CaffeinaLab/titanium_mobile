@@ -254,10 +254,25 @@
 	return [super _handleClose:args];
 }
 
--(void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
 {
-    [super willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
     [self willChangeSize];
+}
+
+- (void)systemLayoutFittingSizeDidChangeForChildContentContainer:(id <UIContentContainer>)container
+{
+    [super systemLayoutFittingSizeDidChangeForChildContentContainer:container];
+}
+
+- (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
+{
+    [super willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
+}
+
+- (void)preferredContentSizeDidChangeForChildContentContainer:(id <UIContentContainer>)container
+{
+    [super preferredContentSizeDidChangeForChildContentContainer:container];
 }
 
 - (void)viewWillAppear:(BOOL)animated;    // Called when the view is about to made visible. Default does nothing
@@ -892,14 +907,12 @@
 
     [self replaceValue:value forKey:@"hidesBarsOnSwipe" notification:NO];
 
-    if ([TiUtils isIOS8OrGreater]) {
-        TiThreadPerformOnMainThread(^{
-            if ((controller != nil) && ([controller navigationController] != nil)) {
-                UINavigationController *ourNC = [controller navigationController];
-                ourNC.hidesBarsOnSwipe = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsOnSwipe"] def:NO];
-            }
-        }, NO);
-    }
+    TiThreadPerformOnMainThread(^{
+        if ((controller != nil) && ([controller navigationController] != nil)) {
+            UINavigationController *ourNC = [controller navigationController];
+            ourNC.hidesBarsOnSwipe = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsOnSwipe"] def:NO];
+        }
+    }, NO);
 }
 
 -(void)setHidesBarsOnTap:(id)value
@@ -908,14 +921,12 @@
 
     [self replaceValue:value forKey:@"hidesBarsOnTap" notification:NO];
     
-    if ([TiUtils isIOS8OrGreater]) {
-        TiThreadPerformOnMainThread(^{
-            if ((controller != nil) && ([controller navigationController] != nil)) {
-                UINavigationController *ourNC = [controller navigationController];
-                ourNC.hidesBarsOnTap = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsOnTap"] def:NO];
-            }
-        }, NO);
-    }
+    TiThreadPerformOnMainThread(^{
+        if ((controller != nil) && ([controller navigationController] != nil)) {
+            UINavigationController *ourNC = [controller navigationController];
+            ourNC.hidesBarsOnTap = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsOnTap"] def:NO];
+        }
+    }, NO);
 }
 
 -(void)setHidesBarsWhenVerticallyCompact:(id)value
@@ -924,14 +935,12 @@
 
     [self replaceValue:value forKey:@"hidesBarsWhenVerticallyCompact" notification:NO];
 
-    if ([TiUtils isIOS8OrGreater]) {
-        TiThreadPerformOnMainThread(^{
-            if ((controller != nil) && ([controller navigationController] != nil)) {
-                UINavigationController *ourNC = [controller navigationController];
-                ourNC.hidesBarsWhenVerticallyCompact = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsWhenVerticallyCompact"] def:NO];
-            }
-        }, NO);
-    }
+    TiThreadPerformOnMainThread(^{
+        if ((controller != nil) && ([controller navigationController] != nil)) {
+            UINavigationController *ourNC = [controller navigationController];
+            ourNC.hidesBarsWhenVerticallyCompact = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsWhenVerticallyCompact"] def:NO];
+        }
+    }, NO);
 }
 
 -(void)setHidesBarsWhenKeyboardAppears:(id)value
@@ -940,14 +949,12 @@
 
     [self replaceValue:value forKey:@"hidesBarsWhenKeyboardAppears" notification:NO];
     
-    if ([TiUtils isIOS8OrGreater]) {
-        TiThreadPerformOnMainThread(^{
-            if ((controller != nil) && ([controller navigationController] != nil)) {
-                UINavigationController *ourNC = [controller navigationController];
-                ourNC.hidesBarsWhenKeyboardAppears = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsWhenKeyboardAppears"] def:NO];
-            }
-        }, NO);
-    }
+    TiThreadPerformOnMainThread(^{
+        if ((controller != nil) && ([controller navigationController] != nil)) {
+            UINavigationController *ourNC = [controller navigationController];
+            ourNC.hidesBarsWhenKeyboardAppears = [TiUtils boolValue:[self valueForUndefinedKey:@"hidesBarsWhenKeyboardAppears"] def:NO];
+        }
+    }, NO);
 }
 
 #define SETPROP(m,x) \

@@ -21,6 +21,7 @@ import org.appcelerator.titanium.util.TiUIHelper;
 import org.appcelerator.titanium.view.TiUIView;
 
 import ti.modules.titanium.ui.AttributedStringProxy;
+import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.os.Build;
@@ -40,6 +41,8 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnFocusChangeListener;
+import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -84,7 +87,7 @@ public class TiUIText extends TiUIView
 	private boolean isTruncatingText = false;
 	private boolean disableChangeEvent = false;
 
-	protected EditText tv;
+	protected TiUIEditText tv;
 
 	public TiUIText(final TiViewProxy proxy, boolean field)
 	{
@@ -102,7 +105,7 @@ public class TiUIText extends TiUIView
 			}
 			return;
 		}
-		tv = (EditText) TiApplication.getAppCurrentActivity().getLayoutInflater().inflate(tvId, null);
+		tv = (TiUIEditText) TiApplication.getAppCurrentActivity().getLayoutInflater().inflate(tvId, null);
 
 		tv.addOnLayoutChangeListener(new View.OnLayoutChangeListener()
 		{
@@ -150,7 +153,6 @@ public class TiUIText extends TiUIView
 		} else {
 			tv.setText("");
 		}
-		disableChangeEvent = false;
 
 		if (d.containsKey(TiC.PROPERTY_COLOR)) {
 			tv.setTextColor(TiConvert.toColor(d, TiC.PROPERTY_COLOR));
@@ -225,6 +227,7 @@ public class TiUIText extends TiUIView
 				tv.setImeOptions(EditorInfo.IME_FLAG_NO_FULLSCREEN);
 			}
 		}
+		disableChangeEvent = false;
 	}
 
 	private void setTextPadding(HashMap<String, Object> d)
@@ -251,10 +254,6 @@ public class TiUIText extends TiUIView
 		}
 
 		tv.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom);
-		
-		if (field) {
-			tv.setGravity(Gravity.CENTER_VERTICAL);
-		}
 	}
 
 	@Override
@@ -433,6 +432,18 @@ public class TiUIText extends TiUIView
 	@Override
 	public boolean onEditorAction(TextView v, int actionId, KeyEvent keyEvent)
 	{
+		// TIMOB-23757: https://code.google.com/p/android/issues/detail?id=182191
+		if (Build.VERSION.SDK_INT < 24 && (tv.getGravity() & Gravity.LEFT) != Gravity.LEFT) {
+			if (getNativeView() != null) {
+				ViewGroup view = (ViewGroup) getNativeView().getParent();
+				view.setFocusableInTouchMode(true);
+				view.requestFocus();
+			}
+			Context context = TiApplication.getInstance().getApplicationContext();
+			InputMethodManager inputManager = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+			inputManager.hideSoftInputFromWindow(tv.getWindowToken(), 0);
+		}
+
 		String value = tv.getText().toString();
 		KrollDict data = new KrollDict();
 		data.put(TiC.PROPERTY_VALUE, value);
@@ -482,6 +493,8 @@ public class TiUIText extends TiUIView
 		int autocorrect = InputType.TYPE_TEXT_FLAG_AUTO_CORRECT;
 		int autoCapValue = 0;
 
+		disableChangeEvent = true;
+
 		if (d.containsKey(TiC.PROPERTY_AUTOCORRECT) && !TiConvert.toBoolean(d, TiC.PROPERTY_AUTOCORRECT, true)) {
 			autocorrect = 0;
 		}
@@ -519,12 +532,15 @@ public class TiUIText extends TiUIView
 					tv.setTransformationMethod(null);
 				}
 			}
+			tv.setKeyListener(null);
 		} else if (d.containsKey(TiC.PROPERTY_SOFT_KEYBOARD_ON_FOCUS)
 			&& TiConvert.toInt(d, TiC.PROPERTY_SOFT_KEYBOARD_ON_FOCUS) == TiUIView.SOFT_KEYBOARD_HIDE_ON_FOCUS) {
 			tv.setInputType(InputType.TYPE_NULL);
 
 		} else {
 			if (d.containsKey(TiC.PROPERTY_AUTOCAPITALIZATION)) {
+
+				disableChangeEvent = false;
 
 				switch (TiConvert.toInt(d.get(TiC.PROPERTY_AUTOCAPITALIZATION), TEXT_AUTOCAPITALIZATION_NONE)) {
 					case TEXT_AUTOCAPITALIZATION_NONE:
@@ -607,25 +623,25 @@ public class TiUIText extends TiUIView
 			}
 
 			if (d.containsKey(TiC.PROPERTY_INPUT_TYPE)) {
-			    Object obj = d.get(TiC.PROPERTY_INPUT_TYPE);
-			    boolean combineInput = false;
-			    int[] inputTypes = null;
-			    int combinedInputType = 0;
+				Object obj = d.get(TiC.PROPERTY_INPUT_TYPE);
+				boolean combineInput = false;
+				int[] inputTypes = null;
+				int combinedInputType = 0;
 
-			    if (obj instanceof Object[]) {
-			        inputTypes = TiConvert.toIntArray((Object[]) obj);
-			    }
+				if (obj instanceof Object[]) {
+					inputTypes = TiConvert.toIntArray((Object[]) obj);
+				}
 
-			    if (inputTypes != null) {
-			        combineInput = true;
-			        for (int inputType: inputTypes) {
-			            combinedInputType |= inputType;
-			        }
-			    }
+				if (inputTypes != null) {
+					combineInput = true;
+					for (int inputType: inputTypes) {
+						combinedInputType |= inputType;
+					}
+				}
 
-			    if (combineInput) {
-			        textTypeAndClass = combinedInputType;
-			    }
+				if (combineInput) {
+					textTypeAndClass = combinedInputType;
+				}
 			}
 
 			if (passwordMask) {
@@ -660,22 +676,35 @@ public class TiUIText extends TiUIView
 			tv.setSingleLine(false);
 		}
 
+		disableChangeEvent = false;
+
 	}
 
 	public void setSelection(int start, int end) 
 	{
+		// Validate arguments.
 		int textLength = tv.length();
 		if (start < 0 || start > textLength || end < 0 || end > textLength) {
 			Log.w(TAG, "Invalid range for text selection. Ignoring.");
 			return;
 		}
 
-		// http://stackoverflow.com/a/35527348/1504248
+		// Do not continue if selection isn't changing. (This is an optimization.)
+		if ((start == tv.getSelectionStart()) && (end == tv.getSelectionEnd())) {
+			return;
+		}
+
+		// This works-around an Android 4.x bug where the "end" index will be ignored
+		// if setSelection() is called just after tapping the text field. (See: TIMOB-19639)
 		Editable text = tv.getText();
 		if (text.length() > 0) {
+			boolean wasDisabled = this.disableChangeEvent;
+			this.disableChangeEvent = true;
 			text.replace(0, 1, text.subSequence(0, 1), 0, 1);
+			this.disableChangeEvent = wasDisabled;
 		}
-		
+
+		// Change the cursor position and text selection.
 		tv.setSelection(start, end);
 	}
 	

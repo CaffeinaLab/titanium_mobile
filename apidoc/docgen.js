@@ -455,7 +455,16 @@ function processAPIs (api) {
 					'__subtype': 'method'
 				};
 				api.__creatable = true;
-				'methods' in doc[cls] ? doc[cls].methods.push(createMethod) : doc[cls].methods = [createMethod];
+				if ('methods' in doc[cls]) {
+					if (!doc[cls].methods) {
+						common.log(common.LOG_WARN, 'Empty \'methods\' listing for class: %s', cls);
+						doc[cls].methods = [createMethod];
+					} else {
+						doc[cls].methods.push(createMethod);
+					}
+				} else {
+					doc[cls].methods = [createMethod];
+				}
 			}
 		}
 	}
@@ -636,11 +645,13 @@ function addOnMerge(baseObj, addObj) {
 function mkdirDashP(path) {
 	var p = path.replace(/\\/g, '/');
 	p = p.substring(0, path.lastIndexOf('/'));
-	if (!fs.existsSync(p)) {
-		mkdirDashP(p);
-	}
-	if (!fs.existsSync(path)) {
-		fs.mkdirSync(path);
+	if (p.length) {
+		if (!fs.existsSync(p)) {
+			mkdirDashP(p);
+		}
+		if (!fs.existsSync(path)) {
+			fs.mkdirSync(path);
+		}
 	}
 }
 
@@ -985,12 +996,13 @@ formats.forEach(function (format) {
 	}
 
 	if (!~['addon'].indexOf(format)) {
-		if (fs.writeFile(output, render) <= 0) {
-			common.log(common.LOG_ERROR, 'Failed to write to file: %s', output);
-			process.exit(1);
-		} else {
+		fs.writeFile(output, render, function (err) {
+			if (err) {
+				common.log(common.LOG_ERROR, 'Failed to write to file: %s with error: %s', output, err);
+				process.exit(1);
+			}
 			common.log('Generated output at %s', output);
-		}
+		});
 	}
 	exporter = exportData = null;
 

@@ -402,6 +402,20 @@ DEFINE_EXCEPTIONS
 }
 #endif
 
+-(void)setTabsTranslucent_:(id)value
+{
+    BOOL tabsTranslucent =  [TiUtils boolValue:value def:YES];
+    controller.tabBar.translucent = tabsTranslucent;
+}
+
+#if IS_XCODE_8
+-(void)setUnselectedItemTintColor_:(id)value
+{
+    ENSURE_TYPE_OR_NIL(value, NSString);
+    [[controller tabBar] setUnselectedItemTintColor:[[TiUtils colorValue:value] color]];
+}
+#endif
+
 -(void)setTabsBackgroundImage_:(id)value
 {
     controller.tabBar.backgroundImage = [self loadImage:value];
@@ -422,29 +436,29 @@ DEFINE_EXCEPTIONS
 {
 	TiColor* color = [TiUtils colorValue:value];
 	//A nil tintColor is fine, too.
-	if ([TiUtils isIOS8OrGreater]) {
-		controller.tabBar.tintColor = color.color;
-	}
-	else {
-		controller.tabBar.selectedImageTintColor = color.color; //deprecated for >= ios8
-	}
+    controller.tabBar.tintColor = color.color;
 }
 
 #pragma mark Public APIs
 
-- (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
 {
-   [controller willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    [controller viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
 }
 
--(void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
+- (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
 {
-    [controller willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    [controller willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
 }
 
--(void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
+- (void)systemLayoutFittingSizeDidChangeForChildContentContainer:(id <UIContentContainer>)container
 {
-    [controller didRotateFromInterfaceOrientation:fromInterfaceOrientation];
+    [controller systemLayoutFittingSizeDidChangeForChildContentContainer:container];
+}
+
+- (void)preferredContentSizeDidChangeForChildContentContainer:(id <UIContentContainer>)container
+{
+    [controller preferredContentSizeDidChangeForChildContentContainer:container];
 }
 
 -(void)setTranslucent_:(id)value

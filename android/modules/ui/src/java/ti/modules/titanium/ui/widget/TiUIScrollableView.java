@@ -13,6 +13,7 @@ import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiC;
+import org.appcelerator.titanium.TiDimension;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.util.TiConvert;
 import org.appcelerator.titanium.util.TiEventHelper;
@@ -22,6 +23,7 @@ import org.appcelerator.titanium.view.TiUIView;
 
 import ti.modules.titanium.ui.ScrollableViewProxy;
 import ti.modules.titanium.ui.widget.listview.ListItemProxy;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
@@ -95,22 +97,16 @@ public class TiUIScrollableView extends TiUIView
 			@Override
 			protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 				TiCompositeLayout.LayoutParams layoutParams = (TiCompositeLayout.LayoutParams) mContainer.getLayoutParams();
+				
 				if (layoutParams.sizeOrFillHeightEnabled && !layoutParams.autoFillsHeight) {
-
-					int mode = MeasureSpec.getMode(heightMeasureSpec);
-					// Unspecified means that the ViewPager is in a ScrollView WRAP_CONTENT.
-					// At Most means that the ViewPager is not in a ScrollView WRAP_CONTENT.
-					if (mode == MeasureSpec.UNSPECIFIED || mode == MeasureSpec.AT_MOST) {
-						// super has to be called in the beginning so the child views can be initialized.
-						super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-						int height = 0;
-						for (int i = 0; i < getChildCount(); i++) {
-							View child = getChildAt(i);
-							child.measure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
-							int h = child.getMeasuredHeight();
-							if (h > height) height = h;
+					int index = getCurrentItem();
+					if (index < mViews.size()) {
+						TiUIView view = mViews.get(index).getOrCreateView();
+						TiDimension optionHeight = view.getLayoutParams().optionHeight;
+						if (optionHeight != null) {
+							int height = optionHeight.getAsPixels(this);
+							heightMeasureSpec = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY);
 						}
-						heightMeasureSpec = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY);
 					}
 				}
 				super.onMeasure(widthMeasureSpec, heightMeasureSpec);

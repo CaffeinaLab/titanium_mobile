@@ -118,27 +118,18 @@ bool Base64AllocAndEncodeData(const void *inInputData, size_t inInputDataSize, c
 +(BOOL)isRetinaFourInch
 {
     CGSize mainScreenBoundsSize = [[UIScreen mainScreen] bounds].size;
-    if ([TiUtils isIOS8OrGreater]) {
-        return (mainScreenBoundsSize.height == 568 || mainScreenBoundsSize.width == 568);
-    }
-    return (mainScreenBoundsSize.height == 568);
+    return (mainScreenBoundsSize.height == 568 || mainScreenBoundsSize.width == 568);
 }
 
 +(BOOL)isRetinaiPhone6
 {
-    if ([TiUtils isIOS8OrGreater]) {
-        CGSize mainScreenBoundsSize = [[UIScreen mainScreen] bounds].size;
-        return (mainScreenBoundsSize.height == 667 || mainScreenBoundsSize.width == 667);
-    }
-    return NO;
+    CGSize mainScreenBoundsSize = [[UIScreen mainScreen] bounds].size;
+    return (mainScreenBoundsSize.height == 667 || mainScreenBoundsSize.width == 667);
 }
 
 +(BOOL)isRetinaHDDisplay
 {
-    if ([TiUtils isIOS8OrGreater]) {
-        return ([UIScreen mainScreen].scale == 3.0);
-    }
-    return NO;
+    return ([UIScreen mainScreen].scale == 3.0);
 }
 
 +(BOOL)isRetinaDisplay
@@ -1325,7 +1316,7 @@ If the new path starts with / and the base url is app://..., we have to massage 
 	{
 		WebFont *font = [[WebFont alloc] init];
 		font.family = value;
-		font.size = 14;
+		font.size = 17;
 		return [font autorelease];
 	}
 	return def;
@@ -1334,11 +1325,7 @@ If the new path starts with / and the base url is app://..., we have to massage 
 
 +(WebFont*)fontValue:(id)value
 {
-	WebFont * result = [self fontValue:value def:nil];
-	if (result == nil) {
-		result = [WebFont defaultFont];
-	}
-	return result;
+	return [self fontValue:value def:[WebFont defaultFont]];
 }
 
 +(TiScriptError*) scriptErrorValue:(id)value;
@@ -2080,6 +2067,10 @@ if ([str isEqualToString:@#orientation]) return (UIDeviceOrientation)orientation
 
 +(NSString*)jsonStringify:(id)value error:(NSError**)error
 {
+    if (value == nil) {
+        return nil;
+    }
+    
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:value
                                                        options:kNilOptions
                                                          error:error];

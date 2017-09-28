@@ -454,6 +454,15 @@
     return controller;
 }
 
+- (UIViewController *)windowHoldingController
+{
+    if (controller != nil) {
+        return controller;
+    } else {
+        return [[TiApp app] controller];
+    }
+}
+
 #pragma mark - Private Methods
 -(TiProxy*)tabGroup
 {
@@ -734,27 +743,83 @@
 
 -(void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
 {
+    ENSURE_TYPE(value, NSNumber);
+    ENSURE_UI_THREAD(setHidesBarsOnSwipe, value);
+    
+    [self replaceValue:value forKey:@"hidesBarsOnSwipe" notification:NO];
+    
+    if ((controller != nil) && ([controller navigationController] != nil)) {
+        [[controller navigationController] setHidesBarsOnSwipe:[TiUtils boolValue:value def:NO]];
+    }
+}
+
+-(void)setHidesBarsOnTap:(id)value
+{
+    ENSURE_TYPE(value, NSNumber);
+    ENSURE_UI_THREAD(setHidesBarsOnTap, value);
+    
+    [self replaceValue:value forKey:@"hidesBarsOnTap" notification:NO];
+    
+    if ((controller != nil) && ([controller navigationController] != nil)) {
+        [[controller navigationController] setHidesBarsOnTap:[TiUtils boolValue:value def:NO]];
+    }
+}
+
+-(void)setHidesBarsWhenKeyboardAppears:(id)value
+{
+    ENSURE_TYPE(value, NSNumber);
+    ENSURE_UI_THREAD(setHidesBarsWhenKeyboardAppears, value);
+    
+    [self replaceValue:value forKey:@"hidesBarsWhenKeyboardAppears" notification:NO];
+    
+    if ((controller != nil) && ([controller navigationController] != nil)) {
+        [[controller navigationController] setHidesBarsWhenKeyboardAppears:[TiUtils boolValue:value def:NO]];
+    }
+}
+
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
+{
     //For various views (scrollableView, NavGroup etc this info neeeds to be forwarded)
     NSArray* childProxies = [self children];
-	for (TiViewProxy * thisProxy in childProxies)
-	{
-		if ([thisProxy respondsToSelector:@selector(willAnimateRotationToInterfaceOrientation:duration:)])
-		{
-			[(id)thisProxy willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
-		}
-	}
+    for (TiViewProxy * thisProxy in childProxies) {
+        if ([thisProxy respondsToSelector:@selector(viewWillTransitionToSize:withTransitionCoordinator:)]) {
+            [(id)thisProxy viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+        }
+    }
 }
 
--(void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
+- (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
 {
-    
+    //For various views (scrollableView, NavGroup etc this info neeeds to be forwarded)
+    NSArray* childProxies = [self children];
+    for (TiViewProxy * thisProxy in childProxies) {
+        if ([thisProxy respondsToSelector:@selector(willTransitionToTraitCollection:withTransitionCoordinator:)]) {
+            [(id)thisProxy willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
+        }
+    }
 }
 
--(void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
+- (void)systemLayoutFittingSizeDidChangeForChildContentContainer:(id <UIContentContainer>)container
 {
-    
+    //For various views (scrollableView, NavGroup etc this info neeeds to be forwarded)
+    NSArray* childProxies = [self children];
+    for (TiViewProxy * thisProxy in childProxies) {
+        if ([thisProxy respondsToSelector:@selector(systemLayoutFittingSizeDidChangeForChildContentContainer:)]) {
+            [(id)thisProxy systemLayoutFittingSizeDidChangeForChildContentContainer:container];
+        }
+    }
 }
 
+- (void)preferredContentSizeDidChangeForChildContentContainer:(id <UIContentContainer>)container
+{
+    //For various views (scrollableView, NavGroup etc this info neeeds to be forwarded)
+    NSArray* childProxies = [self children];
+    for (TiViewProxy * thisProxy in childProxies) {
+        if ([thisProxy respondsToSelector:@selector(preferredContentSizeDidChangeForChildContentContainer:)]) {
+            [(id)thisProxy preferredContentSizeDidChangeForChildContentContainer:container];
+        }
+    }
+}
 
 #pragma mark - TiAnimation Delegate Methods
 -(BOOL)animationShouldTransition:(TiAnimation *)sender

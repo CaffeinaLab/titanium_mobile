@@ -341,7 +341,6 @@ Module.prototype.loadCoreModule = function (id, context) {
 				// found it
 				// FIXME Re-use loadAsJavaScriptText?
 				var module = new Module(id, this, context);
-				
 				module.load(id, externalCommonJsContents);
 				return module.exports;
 			}

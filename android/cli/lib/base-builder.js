@@ -73,7 +73,7 @@ AndroidBaseBuilder.prototype.writeXmlFile = function writeXmlFile(srcOrDoc, dest
 	} else {
 		// Resource sets under a qualifier all need to be merged into a single values
 		// file so we adjust the destination path here if necessary
-		var valueResourcesPattern = /res\/(values(?:-[^/]+)?)\/.*/i;
+		var valueResourcesPattern = new RegExp('(values(?:-[^\\' + path.sep + ']+)?)\\' + path.sep + '[^\\' + path.sep + ']+$', 'i');
 		var match = dest.match(valueResourcesPattern);
 		if (match !== null) {
 			var resourceQualifier = match[1];
@@ -133,7 +133,7 @@ AndroidBaseBuilder.prototype.hasAndroidLibrary = function hasAndroidLibrary(pack
  * Checks if one of our bundled Android Support Libraries (.jar) is also available
  * as an Android Library (.aar) provided by the user.
  *
- * This is used during the build process to allow users to replace any of our
+ * This is used during the build prodess to allow users to replace any of our
  * bundled Android Support Libraries with one of their own choosing. Currently
  * supported Android Support Library versions are 24.2.0 - 25.x.
  *
@@ -149,9 +149,17 @@ AndroidBaseBuilder.prototype.isExternalAndroidLibraryAvailable = function isExte
 	var replaceableAndroidLibraries = {
 		'android.support.graphics.drawable': ['android-support-vector-drawable.jar'],
 		'android.support.graphics.drawable.animated': ['android-support-animated-vector-drawable.jar'],
-		'android.support.v4': ['android-support-v4.jar', 'android-support-v4-internal_impl.jar'],
+		'android.support.v4': ['android-support-v4.jar'],
+		'android.support.compat': ['android-support-compat.jar'],
+		'android.support.coreui': ['android-support-core-ui.jar'],
+		'android.support.coreutils': ['android-support-core-utils.jar'],
+		'android.support.design': ['android-support-design.jar'],
+		'android.support.fragment': ['android-support-fragment.jar'],
+		'android.support.mediacompat': ['android-support-media-compat.jar'],
+		'android.support.transition': ['android-support-transition.jar'],
 		'android.support.v7.appcompat': ['android-support-v7-appcompat.jar'],
-		'android.support.v7.cardview': ['cardview-v7-23.4.0.jar']
+		'android.support.v7.cardview': ['android-support-v7-cardview.jar'],
+		'android.support.v7.recyclerview': ['android-support-v7-recyclerview.jar']
 	};
 	return this.androidLibraries.some(function(libraryInfo) {
 		if (!replaceableAndroidLibraries[libraryInfo.packageName]) {

@@ -1406,6 +1406,7 @@ public class TiHTTPClient
 		public void completeSendingMultipart() throws IOException {
 			printWriter.append("--" + boundary + "--").append(LINE_FEED);
 			printWriter.close();
+
 		}
 
 		private void handleURLEncodedData(UrlEncodedFormEntity form) throws IOException

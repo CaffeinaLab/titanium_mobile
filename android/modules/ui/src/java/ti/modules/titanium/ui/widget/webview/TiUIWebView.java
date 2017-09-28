@@ -344,7 +344,7 @@ public class TiUIWebView extends TiUIView
 		if (Build.VERSION.SDK_INT > 16 || enableJavascriptInterface) {
 			client.getBinding().addJavascriptInterfaces();
 		}
-		
+
 		webView.client = client;
 
 		if (proxy instanceof WebViewProxy) {

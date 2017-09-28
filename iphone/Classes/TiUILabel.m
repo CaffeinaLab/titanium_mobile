@@ -230,8 +230,7 @@
 
 - (NSTextContainer*)currentTextContainer
 {
-    CGSize s = CGSizeMake(self.label.bounds.size.width, self.label.bounds.size.height * heightMultiply);
-    NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:s];
+    NSTextContainer *textContainer = [[NSTextContainer alloc] initWithSize:self.label.bounds.size];
     textContainer.lineFragmentPadding  = 0;
     textContainer.maximumNumberOfLines = (NSUInteger)self.label.numberOfLines;
     textContainer.lineBreakMode = self.label.lineBreakMode;

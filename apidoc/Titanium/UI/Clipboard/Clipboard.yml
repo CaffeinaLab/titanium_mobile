@@ -276,6 +276,7 @@ examples:
 
             Ti.API.info('clipboard name is: ' + clipboard.name);
             Ti.API.info('clipboard.getText() ' + clipboard.getText());
+
 ---
 name: ClipboardItemsType
 summary: Dictionary describing the items for <Titanium.UI.Clipboard.setItems>. 

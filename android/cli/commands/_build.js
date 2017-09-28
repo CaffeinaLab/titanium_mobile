@@ -59,6 +59,7 @@ function AndroidBuilder() {
 
 	this.dexAgent = false;
 
+	this.compileSdkVersion = this.packageJson.compileSDKVersion; // this should always be >= maxSupportedApiLevel
 	this.minSupportedApiLevel = parseInt(this.packageJson.minSDKVersion);
 	this.minTargetApiLevel = parseInt(version.parseMin(this.packageJson.vendorDependencies['android sdk']));
 	this.maxSupportedApiLevel = parseInt(version.parseMax(this.packageJson.vendorDependencies['android sdk']));
@@ -889,6 +890,7 @@ AndroidBuilder.prototype.validate = function validate(logger, config, cli) {
 	this.javacSource = cli.tiapp.properties['android.javac.source'] && cli.tiapp.properties['android.javac.source'].value || config.get('android.javac.source', '1.6');
 	this.javacTarget = cli.tiapp.properties['android.javac.target'] && cli.tiapp.properties['android.javac.target'].value || config.get('android.javac.target', '1.6');
 	this.dxMaxMemory = cli.tiapp.properties['android.dx.maxmemory'] && cli.tiapp.properties['android.dx.maxmemory'].value || config.get('android.dx.maxMemory', '1024M');
+	this.dxMaxIdxNumber = cli.tiapp.properties['android.dx.maxIdxNumber'] && cli.tiapp.properties['android.dx.maxIdxNumber'].value || config.get('android.dx.maxIdxNumber', '65536');
 
 	// manually inject the build profile settings into the tiapp.xml
 	switch (this.deployType) {
@@ -1015,6 +1017,14 @@ AndroidBuilder.prototype.validate = function validate(logger, config, cli) {
 			targetSDKMap[t.id.replace('android-', '')] = t;
 		}
 	}, this);
+
+	// check the Android SDK we require to build exists
+	this.androidCompileSDK = targetSDKMap[this.compileSdkVersion];
+	if (!this.androidCompileSDK) {
+		logger.error(__('Unable to find Android SDK API %s', this.compileSdkVersion));
+		logger.error(__('Android SDK API %s is required to build Android apps', this.compileSdkVersion) + '\n');
+		process.exit(1);
+	}
 
 	try {
 		var tiappAndroidManifest = this.tiappAndroidManifest = cli.tiapp.android && cli.tiapp.android.manifest && (new AndroidManifest).parse(cli.tiapp.android.manifest);
@@ -3211,8 +3221,8 @@ AndroidBuilder.prototype.generateJavaFiles = function generateJavaFiles(next) {
 AndroidBuilder.prototype.generateAidl = function generateAidl(next) {
 	if (!this.forceRebuild) return next();
 
-	if (!this.androidTargetSDK.aidl) {
-		this.logger.info(__('Android SDK %s missing framework aidl, skipping', this.androidTargetSDK['api-level']));
+	if (!this.androidCompileSDK.aidl) {
+		this.logger.info(__('Android SDK %s missing framework aidl, skipping', this.androidCompileSDK['api-level']));
 		return next();
 	}
 
@@ -3248,7 +3258,7 @@ AndroidBuilder.prototype.generateAidl = function generateAidl(next) {
 
 			aidlHook(
 				this.androidInfo.sdk.executables.aidl,
-				['-p' + this.androidTargetSDK.aidl, '-I' + this.buildSrcDir, '-o' + this.buildGenAppIdDir, file],
+				['-p' + this.androidCompileSDK.aidl, '-I' + this.buildSrcDir, '-o' + this.buildGenAppIdDir, file],
 				{},
 				callback
 			);
@@ -3654,6 +3664,21 @@ AndroidBuilder.prototype.generateAndroidManifest = function generateAndroidManif
 		});
 	}
 
+	if (this.realTargetSDK >= 24 && !finalAndroidManifest.application.hasOwnProperty('resizeableActivity')) {
+		finalAndroidManifest.application.resizeableActivity = true;
+	}
+
+	if (this.realTargetSDK >= 24) {
+		Object.keys(finalAndroidManifest.application.activity).forEach(function (name) {
+			var activity = finalAndroidManifest.application.activity[name];
+			if (!activity.configChanges) {
+				activity.configChanges = ['density'];
+			} else if (activity.configChanges.indexOf('density') == -1) {
+				activity.configChanges.push('density');
+			}
+		});
+	}
+
 	// add permissions
 	if (!this.tiapp['override-permissions']) {
 		Array.isArray(finalAndroidManifest['uses-permission']) || (finalAndroidManifest['uses-permission'] = []);
@@ -3707,7 +3732,7 @@ AndroidBuilder.prototype.packageApp = function packageApp(next) {
 			'-M', this.androidManifestFile,
 			'-A', this.buildBinAssetsDir,
 			'-S', this.buildResDir,
-			'-I', this.androidTargetSDK.androidJar,
+			'-I', this.androidCompileSDK.androidJar,
 			'-F', this.ap_File,
 			'--output-text-symbols', bundlesPath,
 			'--no-version-vectors'
@@ -3796,7 +3821,7 @@ AndroidBuilder.prototype.compileJavaClasses = function compileJavaClasses(next) 
 		moduleJars = this.moduleJars = {},
 		jarNames = {};
 
-	classpath[this.androidTargetSDK.androidJar] = 1;
+	classpath[this.androidCompileSDK.androidJar] = 1;
 	Object.keys(this.jarLibraries).map(function (jarFile) {
 		classpath[jarFile] = 1;
 	});
@@ -3974,6 +3999,7 @@ AndroidBuilder.prototype.runDexer = function runDexer(next) {
 			'-Djava.ext.dirs=' + this.androidInfo.sdk.platformTools.path,
 			'-jar', this.androidInfo.sdk.dx,
 			'--dex', '--multi-dex',
+			'--set-max-idx-number=' + this.dxMaxIdxNumber,
 			'--output=' + this.buildBinClassesDex,
 		],
 		shrinkedAndroid = path.join(path.dirname(this.androidInfo.sdk.dx), 'shrinkedAndroid.jar'),
@@ -4077,7 +4103,8 @@ AndroidBuilder.prototype.createUnsignedApk = function createUnsignedApk(next) {
 		soRegExp = /\.so$/,
 		trailingSlashRegExp = /\/$/,
 		nativeLibs = {},
-		origConsoleError = console.error;
+		origConsoleError = console.error,
+		entryNames = [];
 
 	// since the archiver library didn't set max listeners, we squelch all error output
 	console.error = function () {};
@@ -4110,7 +4137,13 @@ AndroidBuilder.prototype.createUnsignedApk = function createUnsignedApk(next) {
 					&& !classRegExp.test(entry.name)
 					&& !trailingSlashRegExp.test(entry.entryName)
 				) {
-					var store = this.uncompressedTypes.indexOf(entry.entryName.split('.').pop()) != -1;
+					// do not add duplicate entries
+					if (entryNames.indexOf(entry.entryName) > -1) {
+						this.logger.warn(__('Removing duplicate entry %s', entry.entryName.cyan));
+						return;
+					}
+
+					var store = this.uncompressedTypes.indexOf(entry.entryName.split('.').pop()) !== -1;
 
 					this.logger.debug(store
 						? __('Adding %s', entry.entryName.cyan)
@@ -4120,6 +4153,7 @@ AndroidBuilder.prototype.createUnsignedApk = function createUnsignedApk(next) {
 						name: entry.entryName,
 						store: store
 					});
+					entryNames.push(entry.entryName);
 				}
 			}, this);
 		}, this);

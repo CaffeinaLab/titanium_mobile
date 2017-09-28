@@ -9,11 +9,11 @@
 #import "GeolocationModule.h"
 #import "TiApp.h"
 #import "TiEvaluator.h"
-#import "SBJSON.h"
-#import <sys/utsname.h>
 #import "NSData+Additions.h"
 #import "APSAnalytics.h"
 #import "AnalyticsModule.h"
+
+#import <sys/utsname.h>
 
 extern NSString * const TI_APPLICATION_GUID;
 extern BOOL const TI_APPLICATION_ANALYTICS;
@@ -148,10 +148,8 @@ extern BOOL const TI_APPLICATION_ANALYTICS;
 
 -(void)requestSuccess:(NSString*)locationString
 {
-	SBJSON *json = [[SBJSON alloc] init];
 	NSError * error = nil;
-	id event = [json fragmentWithString:locationString error:&error];
-	[json release];
+	id event = [TiUtils jsonParse:locationString error:&error];
 	if (error != nil) {
 		[self requestError:error];
 	}
@@ -306,22 +304,14 @@ extern BOOL const TI_APPLICATION_ANALYTICS;
         }
 		locationManager.headingFilter = heading;
 
-        if ([TiUtils isIOS8OrGreater]) {
-            if ([[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSLocationAlwaysUsageDescription"]) {
-                [locationManager requestAlwaysAuthorization];
-            } else if ([[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSLocationWhenInUseUsageDescription"]) {
-                [locationManager requestWhenInUseAuthorization];
-            } else {
-                NSLog(@"[ERROR] The keys NSLocationAlwaysUsageDescription or NSLocationWhenInUseUsageDescription are not defined in your tiapp.xml. Starting with iOS8 this is required.");
-            }
+        if ([[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSLocationAlwaysUsageDescription"]) {
+            [locationManager requestAlwaysAuthorization];
+        } else if ([[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSLocationWhenInUseUsageDescription"]) {
+            [locationManager requestWhenInUseAuthorization];
         } else {
-            if (purpose != nil) {
-                DebugLog(@"[WARN] The Ti.Geolocation.purpose property is deprecated. On iOS6 and above include the NSLocationUsageDescription key in your Info.plist");
-                if ([locationManager respondsToSelector:@selector(setPurpose:)]) {
-                    [locationManager performSelector:@selector(setPurpose:) withObject:purpose];
-                }
-            }
+            NSLog(@"[ERROR] The keys NSLocationAlwaysUsageDescription or NSLocationWhenInUseUsageDescription are not defined in your tiapp.xml. Starting with iOS8 this is required.");
         }
+
         //This is set to NO by default for > iOS9.
         if ([TiUtils isIOS9OrGreater]) {
             locationManager.allowsBackgroundLocationUpdates = allowsBackgroundLocationUpdates;
@@ -338,9 +328,11 @@ extern BOOL const TI_APPLICATION_ANALYTICS;
 			NSString *title = NSLocalizedString(@"Location Services Disabled",@"Location Services Disabled Alert Title");
 			NSString *msg = NSLocalizedString(@"You currently have all location services for this device disabled. If you proceed, you will be asked to confirm whether location services should be reenabled.",@"Location Services Disabled Alert Message");
 			NSString *ok = NSLocalizedString(@"OK",@"Location Services Disabled Alert OK Button");
-			UIAlertView *servicesDisabledAlert = [[UIAlertView alloc] initWithTitle:title message:msg delegate:nil cancelButtonTitle:ok otherButtonTitles:nil];
-			[servicesDisabledAlert show];
-			[servicesDisabledAlert release];
+            
+            		UIAlertController *alertController = [UIAlertController alertControllerWithTitle:title message:msg preferredStyle:UIAlertControllerStyleAlert];
+            		UIAlertAction *action = [UIAlertAction actionWithTitle:ok style:UIAlertActionStyleCancel handler:nil];
+            		[alertController addAction:action];
+            		[[TiApp app] showModalController:alertController animated:YES];
 		}
 	}
 	[lock unlock];
@@ -591,15 +583,12 @@ extern BOOL const TI_APPLICATION_ANALYTICS;
 
 -(NSString *)lastGeolocation
 {
-	SBJSON *json = [[SBJSON alloc] init];
-	NSString * result = [json stringWithObject:lastLocationDict error:nil];
-	[json release];
-	return result;
+    return [TiUtils jsonStringify:lastLocationDict error:nil];
 }
 
 -(NSNumber*)highAccuracy
 {
-	return NUMBOOL(accuracy==kCLLocationAccuracyBest);
+	return NUMBOOL(accuracy == kCLLocationAccuracyBest);
 }
 
 -(void)setHighAccuracy:(NSNumber *)value
@@ -797,18 +786,12 @@ MAKE_SYSTEM_PROP(ACTIVITYTYPE_OTHER_NAVIGATION, CLActivityTypeOtherNavigation);
 
 -(NSNumber*)AUTHORIZATION_ALWAYS
 {
-    if ([TiUtils isIOS8OrGreater]) {
-        return NUMINT(kCLAuthorizationStatusAuthorizedAlways);
-    }
-    return NUMINT(0);
+    return NUMINT(kCLAuthorizationStatusAuthorizedAlways);
 }
 
 -(NSNumber*)AUTHORIZATION_WHEN_IN_USE
 {
-    if ([TiUtils isIOS8OrGreater]) {
-        return NUMINT(kCLAuthorizationStatusAuthorizedWhenInUse);
-    }
-    return NUMINT(0);
+    return NUMINT(kCLAuthorizationStatusAuthorizedWhenInUse);
 }
 
 -(CLLocationManager*)locationPermissionManager
@@ -825,14 +808,10 @@ MAKE_SYSTEM_PROP(ACTIVITYTYPE_OTHER_NAVIGATION, CLActivityTypeOtherNavigation);
 {
     BOOL locationServicesEnabled = [CLLocationManager locationServicesEnabled];
     CLAuthorizationStatus currentPermissionLevel = [CLLocationManager authorizationStatus];
-    if ([TiUtils isIOS8OrGreater]) {
-        id value = [args objectAtIndex:0];
-        ENSURE_TYPE(value, NSNumber);
-        CLAuthorizationStatus requestedPermissionLevel = [TiUtils intValue: value];
-        return NUMBOOL(locationServicesEnabled && currentPermissionLevel == requestedPermissionLevel);
-    } else {
-        return NUMBOOL(locationServicesEnabled && currentPermissionLevel == kCLAuthorizationStatusAuthorized);
-    }
+    id value = [args objectAtIndex:0];
+    ENSURE_TYPE(value, NSNumber);
+    CLAuthorizationStatus requestedPermissionLevel = [TiUtils intValue: value];
+    return NUMBOOL(locationServicesEnabled && currentPermissionLevel == requestedPermissionLevel);
 }
 
 -(void)requestAuthorization:(id)value
@@ -866,14 +845,6 @@ MAKE_SYSTEM_PROP(ACTIVITYTYPE_OTHER_NAVIGATION, CLActivityTypeOtherNavigation);
 
 -(void)requestLocationPermissions:(id)args
 {
-    if (![TiUtils isIOS8OrGreater]) {
-        // It is required that delegate is created and permission is presented in main thread.
-        TiThreadPerformOnMainThread(^{
-            [self requestLocationPermissioniOS7:args];
-        }, NO);
-        return;
-    }
-    
     id value = [args objectAtIndex:0];
     ENSURE_TYPE(value, NSNumber);
     
@@ -972,12 +943,10 @@ MAKE_SYSTEM_PROP(ACTIVITYTYPE_OTHER_NAVIGATION, CLActivityTypeOtherNavigation);
 						   [NSNumber numberWithLongLong:(long long)([[newLocation timestamp] timeIntervalSince1970] * 1000)],@"timestamp",
 						   nil];
     
-    if ([TiUtils isIOS8OrGreater]) {
-        NSDictionary *floor = [NSDictionary dictionaryWithObjectsAndKeys:
-                               [NSNumber numberWithInteger:[[newLocation floor] level]],@"level",
-                               nil];
-        [data setObject:floor forKey:@"floor"];
-    }
+    NSDictionary *floor = [NSDictionary dictionaryWithObjectsAndKeys:
+                           [NSNumber numberWithInteger:[[newLocation floor] level]],@"level",
+                           nil];
+    [data setObject:floor forKey:@"floor"];
     
 	return data;
 }
