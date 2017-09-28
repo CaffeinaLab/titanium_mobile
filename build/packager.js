@@ -239,10 +239,6 @@ Packager.prototype.package = function (next) {
 			// Copy some root files, cli/, templates/, node_modules minus .bin sub-dir
 			this.copy(['CREDITS', 'README.md', 'package.json', 'cli', 'node_modules', 'templates'], cb);
 		}.bind(this),
-<<<<<<< HEAD
-
-=======
->>>>>>> titanium/6_2_X
 		// Now run 'npm prune --production' on the zipSDKDir, so we retain only production dependencies
 		function (cb) {
 			console.log('Pruning to production npm dependencies');

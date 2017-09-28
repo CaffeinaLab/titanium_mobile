@@ -57,7 +57,6 @@ import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.util.AttributeSet;
 
 public class TiListView extends TiUIView implements OnSearchChangeListener {
 
@@ -182,6 +181,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 	}
 
 	public class TiBaseAdapter extends BaseAdapter {
+
 		Activity context;
 
 		public TiBaseAdapter(Activity activity) {
@@ -625,14 +625,6 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 		if (footerView == null) {
 			footerView = inflater.inflate(headerFooterId, null);
 			footerView.findViewById(titleId).setVisibility(View.GONE);
-		}
-		
-		if (d.containsKeyAndNotNull(TiC.PROPERTY_CAN_SCROLL)) {
-			canScroll = TiConvert.toBoolean(d.get(TiC.PROPERTY_CAN_SCROLL), true);
-		}
-
-		if (d.containsKeyAndNotNull(TiC.PROPERTY_CAN_SCROLL)) {
-			canScroll = TiConvert.toBoolean(d.get(TiC.PROPERTY_CAN_SCROLL), true);
 		}
 
 		if (d.containsKeyAndNotNull(TiC.PROPERTY_CAN_SCROLL)) {
