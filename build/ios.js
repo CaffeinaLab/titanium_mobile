@@ -24,7 +24,6 @@ function gunzip(gzFile, destFile, next) {
 	});
 }
 
-
 /**
  * @param {Object} options
  * @param {String} options.sdkVersion version of Titanium SDK

@@ -1179,12 +1179,6 @@ static TiViewProxy * FindViewProxyWithBindIdContainingPoint(UIView *view, CGPoin
             emptyTable = YES;
         }
         
-        BOOL emptyTable = NO;
-        NSUInteger sectionCount = [[self.listViewProxy sectionCount] unsignedIntValue];
-        if ( sectionCount == 0) {
-            emptyTable = YES;
-        }
-        
         BOOL emptySection = NO;
         
         if ([theSection itemCount] == 0) {
@@ -1296,7 +1290,6 @@ static TiViewProxy * FindViewProxyWithBindIdContainingPoint(UIView *view, CGPoin
     if (![self canEditRowAtIndexPath:realIndexPath]) {
         return nil;
     }
-    
     id editValue = [self valueWithKey:@"editActions" atIndexPath:realIndexPath];
     
     if (IS_NULL_OR_NIL(editValue)) {
@@ -2184,7 +2177,6 @@ static TiViewProxy * FindViewProxyWithBindIdContainingPoint(UIView *view, CGPoin
     [[resultViewController tableView] setEditing:NO];
     [_tableView setEditing:NO];
 }
-
 
 #pragma mark - UISearchResultsUpdating
 

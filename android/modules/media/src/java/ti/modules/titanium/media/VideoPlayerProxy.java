@@ -757,6 +757,7 @@ public class VideoPlayerProxy extends TiViewProxy implements TiLifecycle.OnLifec
 				mTiThumbnailRetriever.setUri(uri);
 			}
 
+
 			mTiThumbnailRetriever.getBitmap(TiConvert.toIntArray(times), TiConvert.toInt(option), createThumbnailResponseHandler(callback));
 		}
 	}

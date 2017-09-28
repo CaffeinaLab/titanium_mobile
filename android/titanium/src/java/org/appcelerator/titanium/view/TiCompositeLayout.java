@@ -72,7 +72,6 @@ public class TiCompositeLayout extends ViewGroup
 
     private WeakReference<TiViewProxy> proxy;
 
-
     // We need these two constructors for backwards compatibility with modules
 
     /**
@@ -312,7 +311,6 @@ public class TiCompositeLayout extends ViewGroup
 
             if (isHorizontalArrangement()) {
                 if (enableHorizontalWrap) {
-
                     wRemain -= childWidth;
                     if (wRemain > 0) {
                         // Row has room for this view and can fit more.
@@ -406,7 +404,6 @@ public class TiCompositeLayout extends ViewGroup
             } else {
                 childDimension = p.optionWidth.getAsPixels(this);
             }
-
             if (childDimension < 0) {
                 childDimension = 0;
             }
@@ -442,7 +439,6 @@ public class TiCompositeLayout extends ViewGroup
             } else {
                 childDimension = p.optionHeight.getAsPixels(this);
             }
-
             if (childDimension < 0) {
                 childDimension = 0;
             }

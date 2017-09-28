@@ -1155,6 +1155,7 @@ AndroidModuleBuilder.prototype.compileJsClosure = function (next) {
 	}
 
 	this.logger.info(__('Generating v8 bindings'));
+
 	var dependsMap = this.dependencyMap;
 	Array.prototype.push.apply(this.metaData,dependsMap.required);
 

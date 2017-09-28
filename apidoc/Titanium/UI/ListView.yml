@@ -1094,7 +1094,6 @@ properties:
     since: 6.1.0
     platforms: [iphone, ipad]
     availability: creation
-
     
   - name: resultsSeparatorStyle
     summary: The separator style of the search results (iOS-only).
@@ -1116,7 +1115,7 @@ properties:
     since: 6.1.0
     platforms: [iphone, ipad]
     availability: creation
-
+ 
 methods:
   - name: scrollToItem
     summary: Scrolls to a specific item.

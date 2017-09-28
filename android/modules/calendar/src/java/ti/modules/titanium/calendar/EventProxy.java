@@ -609,6 +609,11 @@ public class EventProxy extends KrollProxy {
 	}
 
 	@Kroll.getProperty @Kroll.method
+	public AttendeeProxy[] getAttendees() {
+		return getAttendeeProxies();
+	}
+
+	@Kroll.getProperty @Kroll.method
 	public boolean getHasAlarm()
 	{
 		return hasAlarm;

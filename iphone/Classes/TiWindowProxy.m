@@ -775,6 +775,7 @@
     if ((controller != nil) && ([controller navigationController] != nil)) {
         [[controller navigationController] setHidesBarsWhenKeyboardAppears:[TiUtils boolValue:value def:NO]];
     }
+<<<<<<< HEAD
 }
 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
@@ -810,6 +811,43 @@
     }
 }
 
+=======
+}
+
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
+{
+    //For various views (scrollableView, NavGroup etc this info neeeds to be forwarded)
+    NSArray* childProxies = [self children];
+    for (TiViewProxy * thisProxy in childProxies) {
+        if ([thisProxy respondsToSelector:@selector(viewWillTransitionToSize:withTransitionCoordinator:)]) {
+            [(id)thisProxy viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+        }
+    }
+}
+
+- (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id <UIViewControllerTransitionCoordinator>)coordinator
+{
+    //For various views (scrollableView, NavGroup etc this info neeeds to be forwarded)
+    NSArray* childProxies = [self children];
+    for (TiViewProxy * thisProxy in childProxies) {
+        if ([thisProxy respondsToSelector:@selector(willTransitionToTraitCollection:withTransitionCoordinator:)]) {
+            [(id)thisProxy willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
+        }
+    }
+}
+
+- (void)systemLayoutFittingSizeDidChangeForChildContentContainer:(id <UIContentContainer>)container
+{
+    //For various views (scrollableView, NavGroup etc this info neeeds to be forwarded)
+    NSArray* childProxies = [self children];
+    for (TiViewProxy * thisProxy in childProxies) {
+        if ([thisProxy respondsToSelector:@selector(systemLayoutFittingSizeDidChangeForChildContentContainer:)]) {
+            [(id)thisProxy systemLayoutFittingSizeDidChangeForChildContentContainer:container];
+        }
+    }
+}
+
+>>>>>>> titanium/6_2_X
 - (void)preferredContentSizeDidChangeForChildContentContainer:(id <UIContentContainer>)container
 {
     //For various views (scrollableView, NavGroup etc this info neeeds to be forwarded)

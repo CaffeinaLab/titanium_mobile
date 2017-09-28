@@ -55,14 +55,13 @@ import android.widget.AbsListView;
 import android.widget.AbsListView.OnScrollListener;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
-import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.util.AttributeSet;
 
 public class TiListView extends TiUIView implements OnSearchChangeListener {
 
-	private ListViewScrollEvent listView;
+	private TiNestedListView listView;
 	private TiBaseAdapter adapter;
 	private ArrayList<ListSectionProxy> sections;
 	private AtomicInteger itemTypeCount;
@@ -86,7 +85,6 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 	private boolean caseInsensitive;
 	private RelativeLayout searchLayout;
 	private static final String TAG = "TiListView";
-	private boolean canScroll = true;
 
 	/* We cache properties that already applied to the recycled list tiem in ViewItem.java
 	 * However, since Android randomly selects a cached view to recycle, our cached properties
@@ -103,35 +101,6 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 	public static final int HEADER_FOOTER_TITLE_TYPE = 1;
 	public static final int BUILT_IN_TEMPLATE_ITEM_TYPE = 2;
 	public static final int CUSTOM_TEMPLATE_ITEM_TYPE = 3;
-
-	public class ListViewScrollEvent extends ListView {
-		public ListViewScrollEvent(Context context) {
-			super(context);
-		}
-
-		public ListViewScrollEvent(Context context, AttributeSet attrs) {
-			super(context,attrs);
-		}
-
-		public ListViewScrollEvent(Context context, AttributeSet attrs, int defStyle) {
-			super(context, attrs, defStyle);
-		}
-
-		//we need this protected method for scroll detection
-		public int getVerticalScrollOffset() {
-			return computeVerticalScrollOffset();
-		}
-
-		@Override
-		public boolean dispatchTouchEvent(MotionEvent ev) {
-			if (!canScroll) {
-				if (ev.getAction() == MotionEvent.ACTION_MOVE) {
-					return true;
-				}
-			}
-			return super.dispatchTouchEvent(ev);
-		}
-	}
 
 	private class ListViewWrapper extends TiSwipeRefreshLayout {
 		private boolean viewFocused = false;
@@ -350,7 +319,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 		wrapper.setSwipeRefreshEnabled(false);
 		wrapper.setFocusable(false);
 		wrapper.setFocusableInTouchMode(false);
-		listView = new ListViewScrollEvent(activity);
+		listView = TiNestedListView.createUsing(activity);
 		listView.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 		wrapper.addView(listView);
 		adapter = new TiBaseAdapter(activity);
@@ -666,6 +635,10 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 			canScroll = TiConvert.toBoolean(d.get(TiC.PROPERTY_CAN_SCROLL), true);
 		}
 
+		if (d.containsKeyAndNotNull(TiC.PROPERTY_CAN_SCROLL)) {
+			this.listView.setTouchScrollable(TiConvert.toBoolean(d.get(TiC.PROPERTY_CAN_SCROLL), true));
+		}
+
 		//Have to add header and footer before setting adapter
 		listView.addHeaderView(headerView, null, false);
 		listView.addFooterView(footerView, null, false);
@@ -820,7 +793,7 @@ public class TiListView extends TiUIView implements OnSearchChangeListener {
 				listView.setDividerHeight(height);
 			}
 		} else if (key.equals(TiC.PROPERTY_CAN_SCROLL)) {
-			canScroll = TiConvert.toBoolean(newValue, true);
+			this.listView.setTouchScrollable(TiConvert.toBoolean(newValue, true));
 		} else {
 			super.propertyChanged(key, oldValue, newValue, proxy);
 		}

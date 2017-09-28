@@ -1,7 +1,7 @@
 {
   "name": "titanium-mobile",
   "description": "Appcelerator Titanium Mobile",
-  "version": "6.2.1.CAFFEINA_1",
+  "version": "6.2.3",
   "moduleApiVersion": {
     "iphone": "2",
     "android": "3",
@@ -47,8 +47,6 @@
     "request": "2.81.0",
     "sprintf": "0.1.5",
     "temp": "0.8.3",
-    "uglify-js": "2.7.0",
-    "unorm": "^1.4.1",
     "windowslib": "0.5.5",
     "wrench": "1.5.9",
     "xcode": "0.9.2",

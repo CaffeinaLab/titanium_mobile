@@ -2401,7 +2401,6 @@ public class TiC
 	/**
 	 * @module.api
 	 */
-
 	public static final String PROPERTY_REQUEST_HEADERS = "requestHeaders";
 
 	/**

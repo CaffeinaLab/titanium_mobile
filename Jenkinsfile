@@ -1,6 +1,5 @@
 #!groovy
 library 'pipeline-library'
-currentBuild.result = 'SUCCESS'
 
 // Keep logs/reports/etc of last 5 builds, only keep build artifacts of last 3 builds
 properties([buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr: '3'))])
@@ -39,7 +38,6 @@ def unitTests(os, nodeVersion, testSuiteBranch) {
 				dir('titanium-mobile-mocha-suite/scripts') {
 					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 						sh 'npm install .'
-
 						try {
 							sh "node test.js -b ../../${zipName} -p ${os}"
 						} catch (e) {
@@ -145,7 +143,6 @@ timestamps {
 				} // !isPR
 			} // stage
 
-
 			nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 				stage('Build') {
 					// Normal build, pull out the version
@@ -166,7 +163,6 @@ timestamps {
 					timeout(5) {
 						// FIXME Do we need to do anything special to make sure we get os-specific modules only on that OS's build/zip?
 						sh 'npm install'
-
 					}
 					sh 'npm test' // Run linting first
 					// Then validate docs
@@ -190,7 +186,6 @@ timestamps {
 							}
 						} // ansiColor
 					} // dir
-
 					archiveArtifacts artifacts: "${basename}-*.zip"
 					stash includes: 'dist/parity.html', name: 'parity'
 					stash includes: 'tests/', name: 'override-tests'
@@ -331,6 +326,9 @@ timestamps {
 						profileName: 'builds.appcelerator.com',
 						pluginFailureResultConstraint: 'FAILURE',
 						userMetadata: []])
+
+					// Now wipe the workspace. otherwise the unstashed artifacts will stick around on the node (master)
+					deleteDir()
 				} // node
 			} // !isPR
 		} // stage

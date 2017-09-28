@@ -378,7 +378,6 @@ public class MediaModule extends KrollModule
 		Context context = TiApplication.getInstance().getApplicationContext();
 		if (context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
 				context.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-
 			return true;
 		}
 		return false;

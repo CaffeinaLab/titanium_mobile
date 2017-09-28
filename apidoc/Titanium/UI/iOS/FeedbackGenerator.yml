@@ -44,7 +44,6 @@ properties:
     constants: Titanium.UI.iOS.FEEDBACK_GENERATOR_TYPE_*
     availability: creation
     optional: false
-
 methods:
   - name: prepare
     summary: Used to prepare the haptic sensor for the upcoming interaction with it.
