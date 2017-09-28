@@ -206,8 +206,6 @@ public class TiUILabel extends TiUIView
 								} else if (action == MotionEvent.ACTION_DOWN) {
 									Selection.setSelection(buffer, buffer.getSpanStart(cSpan), buffer.getSpanEnd(cSpan));
 								}
-							} else if (action == MotionEvent.ACTION_DOWN) {
-								Selection.setSelection(buffer, buffer.getSpanStart(cSpan), buffer.getSpanEnd(cSpan));
 							}
 						}
 					}
@@ -458,7 +456,6 @@ public class TiUILabel extends TiUIView
 				}
 			}
 		}
-
 		if (d.containsKey(TiC.PROPERTY_AUTO_LINK)) {
 			this.autoLinkFlags = TiConvert.toInt(d.get(TiC.PROPERTY_AUTO_LINK), 0) & Linkify.ALL;
 		}
@@ -537,7 +534,6 @@ public class TiUILabel extends TiUIView
 			this.unscaledFontSizeInPixels = tv.getTextSize();
 			tv.requestLayout();
 		} else if (key.equals(TiC.PROPERTY_ELLIPSIZE)) {
-
 			if (newValue instanceof Boolean) {
 				ellipsize = (Boolean) newValue ? TruncateAt.END : null;
 			} else if (newValue instanceof Integer) {
@@ -553,10 +549,6 @@ public class TiUILabel extends TiUIView
 					default:
 						ellipsize = null;
 				}
-				wasUpdated = true;
-			}
-			if (wasUpdated) {
-				updateLabelText();
 			}
 			updateLabelText();
 		} else if (key.equals(TiC.PROPERTY_WORD_WRAP)) {
