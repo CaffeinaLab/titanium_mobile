@@ -201,8 +201,6 @@ exports.init = function (logger, config, cli) {
 			if (pp.appPrefix) {
 				exportsOptions.teamId = pp.appPrefix;
 			}
-
-			finished();
 		}
 
 		var keychains = builder.iosInfo.certs.keychains;
