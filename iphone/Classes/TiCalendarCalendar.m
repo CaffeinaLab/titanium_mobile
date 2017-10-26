@@ -143,6 +143,7 @@
       return;
     }
     result = [ourStore eventWithIdentifier:[TiUtils stringValue:arg]];
+
   },
       YES);
   if (result != NULL) {
@@ -174,24 +175,25 @@
   return [TiCalendarEvent convertEvents:events withContext:[self executionContext] calendar:[self calendar] module:module];
 }
 
-
--(NSArray*)getEventsBetweenDates:(id)args
+- (NSArray *)getEventsInDate:(id)arg
 {
   ENSURE_ARG_COUNT(arg, 3);
-
-  DEPRECATED_REPLACED(@"Calendar.getEventsInDate(date)", @"7.0.0", @"Calendar.getEventsBetweenDates(date1, date2) to avoid platform-differences of the month-index between iOS and Android");
 
   NSDateComponents *comps = [[NSDateComponents alloc] init];
   NSTimeInterval secondsPerDay = 24 * 60 * 60;
 
+  int month = [TiUtils intValue:[arg objectAtIndex:1]];
+  // We should do +1 for parity with Android, but for retrocomp until 7.0.0 keep this
+  // month += 1;
+
   [comps setDay:[TiUtils intValue:[arg objectAtIndex:2]]];
-  [comps setMonth:[TiUtils intValue:[arg objectAtIndex:1]]];
+  [comps setMonth:month];
   [comps setYear:[TiUtils intValue:[arg objectAtIndex:0]]];
   [comps setHour:0];
   [comps setMinute:0];
   [comps setSecond:0];
 
-  NSCalendar *cal = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+  NSCalendar *cal = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
 
   NSDate *date1, *date2;
   date1 = [cal dateFromComponents:comps];
@@ -206,70 +208,69 @@
 
 - (NSArray *)getEventsInMonth:(id)args
 {
-    ENSURE_ARG_COUNT(arg, 3);
-    
-    NSDateComponents *comps = [[NSDateComponents alloc] init];
-    NSTimeInterval secondsPerDay = 24 * 60 * 60;
+  ENSURE_ARG_COUNT(args, 2);
 
-    int month = [TiUtils intValue:[arg objectAtIndex:1]];
-    // We should do +1 for parity with Android, but for retrocomp until 7.0.0 keep this
-    // month += 1;
+  // We do this for parity with Javascript and Android
+  int month = [TiUtils intValue:[args objectAtIndex:1]];
+  // We should do +1 for parity with Android, but for retrocomp until 7.0.0 keep this
+  // month += 1;
 
-    [comps setDay:[TiUtils intValue:[arg objectAtIndex:2]]];
-    [comps setMonth:month];
-    [comps setYear:[TiUtils intValue:[arg objectAtIndex:0]]];
-    [comps setHour:0];
-    [comps setMinute:0];
-    [comps setSecond:0];
+  NSDateComponents *comps = [[NSDateComponents alloc] init];
 
-    NSCalendar *cal = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+  [comps setDay:1];
+  [comps setMonth:month];
+  [comps setYear:[TiUtils intValue:[args objectAtIndex:0]]];
+  [comps setHour:0];
+  [comps setMinute:0];
+  [comps setSecond:0];
 
-    NSDate *date1, *date2;
-    date1 = [cal dateFromComponents:comps];
-    date2 = [date1 dateByAddingTimeInterval:secondsPerDay];
+  NSCalendar *cal = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
 
-    [comps release];
-    [cal release];
-    
-    NSArray* events = [self _fetchAllEventsbetweenDate:date1 andDate:date2];
-    return [TiCalendarEvent convertEvents:events withContext:[self executionContext] calendar:[self calendar] module:module];
+  NSDate *date1, *date2;
+  date1 = [cal dateFromComponents:comps];
+
+  NSTimeInterval secondsPerDay = 24 * 60 * 60;
+  NSRange days = [cal rangeOfUnit:NSDayCalendarUnit
+                           inUnit:NSMonthCalendarUnit
+                          forDate:date1];
+
+  date2 = [date1 dateByAddingTimeInterval:(secondsPerDay * days.length)];
+
+  [comps release];
+  [cal release];
+
+  NSArray *events = [self _fetchAllEventsbetweenDate:date1 andDate:date2];
+  return [TiCalendarEvent convertEvents:events withContext:[self executionContext] calendar:[self calendar] module:module];
 }
 
 - (NSArray *)getEventsInYear:(id)args
 {
-    ENSURE_ARG_COUNT(args, 2);
+  ENSURE_ARG_COUNT(args, 1);
 
-    // We do this for parity with Javascript and Android
-    int month = [TiUtils intValue:[args objectAtIndex:1]];
-    // We should do +1 for parity with Android, but for retrocomp until 7.0.0 keep this
-    // month += 1;
-    
-    NSDateComponents *comps = [[NSDateComponents alloc] init];
-    
-    [comps setDay:1];
-    [comps setMonth:month];
-    [comps setYear:[TiUtils intValue:[args objectAtIndex:0]]];
-    [comps setHour:0];
-    [comps setMinute:0];
-    [comps setSecond:0];
-    
-    NSCalendar *cal = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
-    
-    NSDate *date1, *date2;
-    date1 = [cal dateFromComponents:comps];
-    
-    NSTimeInterval secondsPerDay = 24 * 60 * 60;
-    NSRange days = [cal rangeOfUnit:NSDayCalendarUnit
-                             inUnit:NSMonthCalendarUnit
-                            forDate:date1];
-    
-    date2 = [date1 dateByAddingTimeInterval:(secondsPerDay * days.length)];
-    
-    [comps release];
-    [cal release];
-    
-    NSArray* events = [self _fetchAllEventsbetweenDate:date1 andDate:date2];
-    return [TiCalendarEvent convertEvents:events withContext:[self executionContext] calendar:[self calendar] module:module];
+  NSDateComponents *comps = [[NSDateComponents alloc] init];
+  int year = [TiUtils intValue:[args objectAtIndex:0]];
+
+  [comps setDay:1];
+  [comps setMonth:1];
+  [comps setYear:year];
+  [comps setHour:0];
+  [comps setMinute:0];
+  [comps setSecond:0];
+
+  NSCalendar *cal = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+
+  NSDate *date1, *date2;
+  date1 = [cal dateFromComponents:comps];
+
+  NSTimeInterval secondsPerDay = 24 * 60 * 60;
+  [comps setYear:year + 1];
+  date2 = [cal dateFromComponents:comps];
+
+  [comps release];
+  [cal release];
+
+  NSArray *events = [self _fetchAllEventsbetweenDate:date1 andDate:date2];
+  return [TiCalendarEvent convertEvents:events withContext:[self executionContext] calendar:[self calendar] module:module];
 }
 
 - (id)valueForUndefinedKey:(NSString *)key
