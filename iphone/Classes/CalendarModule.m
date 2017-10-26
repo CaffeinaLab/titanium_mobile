@@ -292,7 +292,7 @@
   EKEventStore *ourStore = [self store];
 
   if (ourStore == nil) {
-    DebugLog(@"Could not instantiate an event of the event store.");
+    DebugLog(@"[ERROR] Could not instantiate an event of the event store.");
     return nil;
   }
 
@@ -301,16 +301,16 @@
   EKSource *theSource = nil;
 
   // First of all, search for and iCloud account
-  for (EKSource *source in ourStore.sources) {
-    if (source.sourceType == EKSourceTypeCalDAV && [source.title isEqualToString:@"iCloud"]) {
+  for (EKSource *source in [ourStore sources]) {
+    if ([source sourceType] == EKSourceTypeCalDAV && [[source title] isEqualToString:@"iCloud"]) {
       theSource = source;
       break;
     }
   }
 
   // If iCloud is off, create new calendar in Locale because we can't write other calendars (like Gmail or Yahoo!)
-  for (EKSource *source in ourStore.sources) {
-    if (source.sourceType == EKSourceTypeLocal) {
+  for (EKSource *source in [ourStore sources]) {
+    if ([source sourceType] == EKSourceTypeLocal) {
       theSource = source;
       break;
     }
@@ -322,7 +322,7 @@
   }
 
   if (theSource == nil) {
-    NSLog(@"Error creating calendar: No available source");
+    NSLog(@"[ERROR] Error creating calendar: No source available");
     return;
   }
 
@@ -330,23 +330,23 @@
   calendar.title = name;
 
   NSError *error = nil;
-  BOOL result;
+  BOOL result = NO;
 
   // But we are smart and we try-catch all the things to avoid an application fatal crash
   @try {
     result = [ourStore saveCalendar:calendar commit:YES error:&error];
   } @catch (NSException *exception) {
-    NSLog(@"Error creating calendar: %@.", exception.reason);
+    NSLog(@"[ERROR] Error creating calendar: %@.", [exception reason]);
   }
 
-  if (result == false) {
-    NSLog(@"Error creating calendar: %@.", error);
+  if (result == NO) {
+    NSLog(@"[ERROR] Error creating calendar: %@.", error);
   }
 
   return calendar.calendarIdentifier;
 }
 
-- (BOOL)deleteCalendarById:(id)arg
+- (NSNumber *)deleteCalendarById:(id)arg
 {
   ENSURE_SINGLE_ARG(arg, NSString);
 
@@ -357,12 +357,14 @@
     NSError *error = nil;
     BOOL result = [ourStore removeCalendar:calendar commit:YES error:&error];
     if (result) {
-      return YES;
+      return @YES;
     } else {
       NSLog(@"Deleting calendar failed: %@.", error);
-      return NO;
+      return @NO;
     }
   }
+
+  return @NO;
 }
 
 #pragma mark - Properties
