@@ -324,6 +324,11 @@
 
 -(void)dealloc
 {
+    if ([searchController isActive]) {
+      searchController.view.hidden = YES;
+      [searchController setActive:NO];
+    }
+
 	if (searchField != nil) {
 		[searchField setDelegate:nil];
 		RELEASE_TO_NIL(searchField);
@@ -436,8 +441,13 @@
         _searchTableView.delegate = self;
         _searchTableView.dataSource = self;
         _searchTableView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-        
-        
+      
+#if IS_XCODE_9
+        if ([TiUtils isIOS11OrGreater]) {
+            _searchTableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+        }
+#endif
+      
         if (TiDimensionIsDip(rowHeight))
         {
             [_searchTableView setRowHeight:rowHeight.value];
@@ -475,8 +485,18 @@
 		tableview.delegate = self;
 		tableview.dataSource = self;
 		tableview.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-		
-		
+
+     		// Fixes incorrect heights in iOS 11 as we calculate them internally already
+     		tableview.estimatedRowHeight = 0;
+     		tableview.estimatedSectionFooterHeight = 0;
+     		tableview.estimatedSectionHeaderHeight = 0;
+	
+#if IS_XCODE_9
+    		if ([TiUtils isIOS11OrGreater]) {
+        		tableview.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    		}
+#endif
+
 		if (TiDimensionIsDip(rowHeight)) {
 			[tableview setRowHeight:rowHeight.value];
 		} else {
@@ -1629,7 +1649,8 @@
 
 	if (tableHeaderView == nil)
 	{
-		CGRect wrapperFrame = CGRectMake(0, 0, [tableview bounds].size.width, TI_NAVBAR_HEIGHT);
+        CGFloat wrapperHeight = [TiUtils isIOS11OrGreater] ? TI_SEARCHBAR_HEIGHT : TI_NAVBAR_HEIGHT;
+        CGRect wrapperFrame = CGRectMake(0, 0, [tableview bounds].size.width, wrapperHeight);
 		tableHeaderView = [[UIView alloc] initWithFrame:wrapperFrame];
 		[tableHeaderView setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
 		[searchView setAutoresizingMask:UIViewAutoresizingFlexibleWidth];
@@ -2833,11 +2854,11 @@ return result;	\
     viewController.definesPresentationContext = YES;
     
     [viewController presentViewController:controller animated:NO completion:^{
-        UIView *view = controller.searchBar.superview;
-        view.frame = CGRectMake(view.frame.origin.x, self.frame.origin.y, view.frame.size.width, view.frame.size.height);
-        controller.searchBar.frame = CGRectMake(0, 0, view.frame.size.width, view.frame.size.height);
-        resultViewController.tableView.frame = CGRectMake(self.frame.origin.x,self.frame.origin.y + view.frame.size.height, self.frame.size.width, self.frame.size.height);
-        
+      CGPoint convertedOrigin = [self.superview convertPoint:self.frame.origin toView:viewController.view];
+      UIView *view = controller.searchBar.superview;
+      view.frame = CGRectMake(view.frame.origin.x, convertedOrigin.y, view.frame.size.width, view.frame.size.height);
+      controller.searchBar.frame = CGRectMake(0, 0, view.frame.size.width, view.frame.size.height);
+      resultViewController.tableView.frame = CGRectMake(convertedOrigin.x, convertedOrigin.y + view.frame.size.height, self.frame.size.width, self.frame.size.height);
     }];
 }
 

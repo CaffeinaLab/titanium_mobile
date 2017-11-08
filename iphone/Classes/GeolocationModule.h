@@ -4,18 +4,21 @@
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
-#import "TiModule.h"
-#import "APSHTTPClient.h"
 
 #ifdef USE_TI_GEOLOCATION
 
+#import "TiModule.h"
+#import "APSHTTPClient.h"
 #import <CoreLocation/CoreLocation.h>
+
+NSString *const kTiGeolocationUsageDescriptionWhenInUse = @"NSLocationWhenInUseUsageDescription";
+NSString *const kTiGeolocationUsageDescriptionAlways = @"NSLocationAlwaysUsageDescription";
+NSString *const kTiGeolocationUsageDescriptionAlwaysAndWhenInUse = @"NSLocationAlwaysAndWhenInUseUsageDescription";
 
 @interface GeolocationModule : TiModule<CLLocationManagerDelegate> {
 	CLLocationManager *locationManager;
 	CLLocationManager *tempManager; // Our 'fakey' manager for handling certain <=3.2 requests
 	CLLocationManager *locationPermissionManager; // used for just permissions requests
-	CLLocationManager *iOS7PermissionManager; // specific to iOS7 to maintain parity with iOS8 permissions behavior.
 
 	CLLocationAccuracy accuracy;
 	CLLocationDistance distance;
@@ -28,8 +31,9 @@
 	BOOL trackingLocation;
 	BOOL trackSignificantLocationChange;
 	BOOL allowsBackgroundLocationUpdates;
-    KrollCallback *authorizationCallback;
-    
+	KrollCallback *authorizationCallback;
+	CLAuthorizationStatus requestedAuthorizationStatus;
+
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_6_0
 	CLActivityType activityType;
 	BOOL pauseLocationUpdateAutomatically;

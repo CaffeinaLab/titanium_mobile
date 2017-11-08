@@ -10,6 +10,7 @@ def gitCommit = ''
 def basename = ''
 def vtag = ''
 def isPR = false
+def isMainlineBranch = true
 
 // Variables we can change
 def nodeVersion = '6.10.3' // NOTE that changing this requires we set up the desired version on jenkins master first!
@@ -104,46 +105,68 @@ timestamps {
 				// FIXME: Workaround for missing env.GIT_COMMIT: http://stackoverflow.com/questions/36304208/jenkins-workflow-checkout-accessing-branch-name-and-git-commit
 				gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
 				isPR = env.BRANCH_NAME.startsWith('PR-')
+				isMainlineBranch = (env.BRANCH_NAME ==~ /master|\d_\d_X/)
 				// target branch of windows SDK to use and test suite to test with
-				targetBranch = isPR ? env.CHANGE_TARGET : env.BRANCH_NAME
-				if (!targetBranch) {
+				if (isPR) {
+					targetBranch = env.CHANGE_TARGET
+				} else if (isMainlineBranch) { // if it's a mainline branch, use the same branch for titanium_mobile_windows
+					targetBranch = env.BRANCH_NAME
+				}
+				if (!targetBranch) { // if all else fails, use master as SDK branch to test with
 					targetBranch = 'master'
 				}
 			}
 
-			// Skip the Windows SDK portion if a PR, we don't need it
-			stage('Windows') {
-				if (!isPR) {
-					// This may be the very first build on this branch, so there's no windows build to grab yet
-					def isFirstBuildOnBranch = false
-					try {
-						sh 'curl -O http://builds.appcelerator.com.s3.amazonaws.com/mobile/branches.json'
-						if (fileExists('branches.json')) {
-							def contents = readFile('branches.json')
-							if (!contents.startsWith('<?xml')) { // May be an 'Access denied' xml file/response
-								def branchesJSON = jsonParse(contents)
-								isFirstBuildOnBranch = !(branchesJSON['branches'].contains(env.BRANCH_NAME))
-							}
-						}
-					} catch (err) {
-						// ignore? Not able to grab the branches.json, what should we assume? In 99.9% of the cases, it's not a new build
-					}
-
-					// If there's no windows build for this branch yet, use master
-					def windowsBranch = targetBranch
-					if (isFirstBuildOnBranch) {
-						windowsBranch = 'master'
-						manager.addWarningBadge("Looks like the first build on branch ${env.BRANCH_NAME}. Using 'master' branch build of Windows SDK to bootstrap.")
-					}
-					step([$class: 'CopyArtifact',
-						projectName: "../titanium_mobile_windows/${windowsBranch}",
-						selector: [$class: 'StatusBuildSelector', stable: false],
-						filter: 'dist/windows/'])
-					sh 'rm -rf windows; mv dist/windows/ windows/; rm -rf dist'
-				} // !isPR
-			} // stage
-
 			nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+
+				stage('Lint') {
+					// NPM 5.2.0 had a bug that broke pruning to production, but latest npm 5.4.1 works well
+					sh 'npm install -g npm@5.4.1'
+
+					// Install dependencies
+					timeout(5) {
+						// FIXME Do we need to do anything special to make sure we get os-specific modules only on that OS's build/zip?
+						sh 'npm install'
+					}
+					sh 'npm test' // Run linting first
+					// Then validate docs
+					dir('apidoc') {
+						sh 'node validate.js'
+					}
+				}
+
+				// Skip the Windows SDK portion if a PR, we don't need it
+				stage('Windows') {
+					if (!isPR) {
+						// This may be the very first build on this branch, so there's no windows build to grab yet
+						def isFirstBuildOnBranch = false
+						try {
+							sh 'curl -O http://builds.appcelerator.com.s3.amazonaws.com/mobile/branches.json'
+							if (fileExists('branches.json')) {
+								def branchesJSONContents = readFile('branches.json')
+								if (!branchesJSONContents.startsWith('<?xml')) { // May be an 'Access denied' xml file/response
+									def branchesJSON = jsonParse(branchesJSONContents)
+									isFirstBuildOnBranch = !(branchesJSON['branches'].contains(env.BRANCH_NAME))
+								}
+							}
+						} catch (err) {
+							// ignore? Not able to grab the branches.json, what should we assume? In 99.9% of the cases, it's not a new build
+						}
+
+						// If there's no windows build for this branch yet, use master
+						def windowsBranch = targetBranch
+						if (isFirstBuildOnBranch) {
+							windowsBranch = 'master'
+							manager.addWarningBadge("Looks like the first build on branch ${env.BRANCH_NAME}. Using 'master' branch build of Windows SDK to bootstrap.")
+						}
+						step([$class: 'CopyArtifact',
+							projectName: "../titanium_mobile_windows/${windowsBranch}",
+							selector: [$class: 'StatusBuildSelector', stable: false],
+							filter: 'dist/windows/'])
+						sh 'rm -rf windows; mv dist/windows/ windows/; rm -rf dist'
+					} // !isPR
+				} // stage
+
 				stage('Build') {
 					// Normal build, pull out the version
 					def version = sh(returnStdout: true, script: 'sed -n \'s/^ *"version": *"//p\' package.json | tr -d \'"\' | tr -d \',\'').trim()
@@ -156,19 +179,6 @@ timestamps {
 					basename = "dist/mobilesdk-${vtag}"
 					echo "BASENAME:        ${basename}"
 
-					// Enforce npm 5.2.0 right now, since 5.3.0 has a bug in pruning to production: https://github.com/npm/npm/issues/17781
-					sh 'npm install -g npm@5.2'
-
-					// Install dev dependencies
-					timeout(5) {
-						// FIXME Do we need to do anything special to make sure we get os-specific modules only on that OS's build/zip?
-						sh 'npm install'
-					}
-					sh 'npm test' // Run linting first
-					// Then validate docs
-					dir('apidoc') {
-						sh 'node validate.js'
-					}
 					// TODO parallelize the iOS/Android/Mobileweb/Windows portions!
 					dir('build') {
 						timeout(15) {
@@ -195,17 +205,13 @@ timestamps {
 					// Clean up and install only production dependencies
 					sh 'npm prune --production'
 
-					// Scan for NSP and RetireJS warnings
-					def scanFiles = []
-					sh 'npm install -g nsp'
-					def nspExitCode = sh(returnStatus: true, script: 'nsp check --output json 2> nsp.json')
-					if (nspExitCode != 0) {
-						scanFiles << [path: 'nsp.json']
-					}
+					// Scan for Dependency Check and RetireJS warnings
+					def scanFiles = [[path: 'dependency-check-report.xml']]
+					dependencyCheckAnalyzer datadir: '', hintsFile: '', includeCsvReports: false, includeHtmlReports: false, includeJsonReports: false, isAutoupdateDisabled: false, outdir: '', scanpath: 'package.json', skipOnScmChange: false, skipOnUpstreamChange: false, suppressionFile: '', zipExtensions: ''
+					dependencyCheckPublisher canComputeNew: false, defaultEncoding: '', healthy: '', pattern: '', unHealthy: ''
 
 					sh 'npm install -g retire'
 					def retireExitCode = sh(returnStatus: true, script: 'retire --outputformat json --outputpath ./retire.json')
-
 					if (retireExitCode != 0) {
 						scanFiles << [path: 'retire.json']
 					}
@@ -230,9 +236,8 @@ timestamps {
 		}
 
 		stage('Deploy') {
-			// Push to S3 if not PR
-			// FIXME on oddball PRs on branches of original repo, we shouldn't do this
-			if (!isPR) {
+			// Push to S3 if on 'master' or "mainline" branch like 6_2_X, 7_0_X...
+			if (isMainlineBranch) {
 				// Now allocate a node for uploading artifacts to s3 and in Jenkins
 				node('(osx || linux) && !axway-internal && curl') {
 					def indexJson = []
@@ -248,6 +253,39 @@ timestamps {
 						def contents = readFile('index.json')
 						if (!contents.startsWith('<?xml')) { // May be an 'Access denied' xml file/response
 							indexJson = jsonParse(contents)
+						} else {
+							// we get access denied if it doesn't exist! Let's treat that as us needing to add branch to branches.json listing
+							try {
+								sh 'curl -O http://builds.appcelerator.com.s3.amazonaws.com/mobile/branches.json'
+								if (fileExists('branches.json')) {
+									def branchesJSONContents = readFile('branches.json')
+									if (!branchesJSONContents.startsWith('<?xml')) { // May be an 'Access denied' xml file/response
+										def branchesJSON = jsonParse(branchesJSONContents)
+										if (!(branchesJSON['branches'].contains(env.BRANCH_NAME))) {
+											// Update the branches.json on S3
+											echo 'updating mobile/branches.json to include new branch...'
+											branchesJSON['branches'] << env.BRANCH_NAME
+											writeFile file: 'branches.json', text: new groovy.json.JsonBuilder(branchesJSON).toPrettyString()
+											step([
+												$class: 'S3BucketPublisher',
+												consoleLogLevel: 'INFO',
+												entries: [[
+													bucket: 'builds.appcelerator.com/mobile',
+													gzipFiles: false,
+													selectedRegion: 'us-east-1',
+													sourceFile: 'branches.json',
+													uploadFromSlave: true,
+													userMetadata: []
+												]],
+												profileName: 'builds.appcelerator.com',
+												pluginFailureResultConstraint: 'FAILURE',
+												userMetadata: []])
+										}
+									}
+								}
+							} catch (err) {
+								// ignore? Not able to grab the branches.json, what should we assume? In 99.9% of the cases, it's not a new build
+							}
 						}
 					}
 
@@ -330,7 +368,7 @@ timestamps {
 					// Now wipe the workspace. otherwise the unstashed artifacts will stick around on the node (master)
 					deleteDir()
 				} // node
-			} // !isPR
+			} // isMainlineBranch
 		} // stage
 	}
 	catch (err) {
