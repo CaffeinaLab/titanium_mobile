@@ -136,7 +136,7 @@ NSArray *moviePlayerKeys = nil;
 
   // TIMOB-25566: Video controls need to be handled manually as they can
   // cause issues if the URL is set after creation
-  id showsControls = [loadProperties valueForKey:@"showsControls"];
+  id showsControls = [self valueForKey:@"showsControls"];
   if (showsControls != nil) {
     [self setShowsControls:showsControls];
   }
@@ -471,6 +471,7 @@ NSArray *moviePlayerKeys = nil;
 
 - (void)setShowsControls:(NSNumber *)value
 {
+  [self replaceValue:value forKey:@"showsControls" notification:NO];
   if (movie != nil) {
     [movie setShowsPlaybackControls:[TiUtils boolValue:value def:YES]];
   } else {
