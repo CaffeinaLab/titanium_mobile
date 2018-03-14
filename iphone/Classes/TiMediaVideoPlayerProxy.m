@@ -133,6 +133,7 @@ NSArray *moviePlayerKeys = nil;
 {
   [self addNotificationObserver];
   [self setValuesForKeysWithDictionary:loadProperties];
+
   // we need this code below since the player can be realized before loading
   // properties in certain cases and when we go to create it again after setting
   // url we will need to set the new controller to the already created view
