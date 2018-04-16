@@ -77,14 +77,10 @@
 
 - (TiUIView *)newView
 {
-  if (tab == nil && (self.isManaged == NO)) {
-    [[[[TiApp app] controller] topContainerController] willCloseWindow:self];
-  }
-  if ([self _hasListeners:@"willclose"]) {
-    [self fireEvent:@"willclose" withObject:nil withSource:self propagate:NO reportSuccess:NO errorCode:0 message:nil];
-  }
-  [[NSNotificationCenter defaultCenter] removeObserver:self];
-  [super windowWillClose];
+  CGRect frame = [self appFrame];
+  TiUIWindow *win = [[TiUIWindow alloc] initWithFrame:frame];
+  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rootViewDidForceFrame:) name:kTiFrameAdjustNotification object:nil];
+  return win;
 }
 
 - (BOOL)suppressesRelayout
@@ -131,6 +127,9 @@
 {
   if (tab == nil && (self.isManaged == NO)) {
     [[[[TiApp app] controller] topContainerController] willCloseWindow:self];
+  }
+  if ([self _hasListeners:@"willclose"]) {
+    [self fireEvent:@"willclose" withObject:nil withSource:self propagate:NO reportSuccess:NO errorCode:0 message:nil];
   }
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [super windowWillClose];
