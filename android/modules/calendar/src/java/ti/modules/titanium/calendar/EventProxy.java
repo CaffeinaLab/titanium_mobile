@@ -59,11 +59,6 @@ public class EventProxy extends KrollProxy
 		super();
 	}
 
-	public EventProxy(TiContext context)
-	{
-		this();
-	}
-
 	private static long RFC2445ToMilliseconds(String str)
 	{
 		if(str == null || str.isEmpty())
@@ -223,22 +218,6 @@ public class EventProxy extends KrollProxy
 		return events;
 	}
 
-	@Kroll.method
-	public void save()
-	{
-		// Currently only saving added recurrenceRules.
-		String ruleToSave =
-			((RecurrenceRuleProxy) ((Object[]) getProperty(TiC.PROPERTY_RECURRENCE_RULES))[0]).generateRRULEString();
-		ContentValues contentValues = new ContentValues();
-		contentValues.put(Events.RRULE, ruleToSave);
-		ContentResolver contentResolver = TiApplication.getInstance().getContentResolver();
-		try {
-			contentResolver.update(Events.CONTENT_URI, contentValues, Events._ID + "=?", new String[] { id });
-		} catch (IllegalArgumentException e) {
-			Log.e(TAG, "Invalid event recurrence rule.");
-		}
-	}
-
 	public static ArrayList<EventProxy> queryEvents(Uri uri, String query, String[] queryArgs, String orderBy)
 	{
 		ArrayList<EventProxy> events = new ArrayList<EventProxy>();
@@ -317,11 +296,6 @@ public class EventProxy extends KrollProxy
 		}
 
 		return event;
-	}
-
-	public static EventProxy createEvent(TiContext context, CalendarProxy calendar, KrollDict data)
-	{
-		return createEvent(calendar, data);
 	}
 
 	@Kroll.method
