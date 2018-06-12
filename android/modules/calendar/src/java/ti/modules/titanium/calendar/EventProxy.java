@@ -9,7 +9,6 @@ package ti.modules.titanium.calendar;
 import java.util.ArrayList;
 import java.util.Date;
 
-import android.provider.CalendarContract;
 import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.annotations.Kroll;
@@ -29,9 +28,8 @@ import android.provider.CalendarContract.Instances;
 import android.text.format.DateUtils;
 
 // Columns and value constants taken from android.provider.Calendar in the android source base
-@Kroll.proxy(parentModule = CalendarModule.class, propertyAccessors = { TiC.PROPERTY_RECURRENCE_RULES })
-public class EventProxy extends KrollProxy
-{
+@Kroll.proxy(parentModule=CalendarModule.class)
+public class EventProxy extends KrollProxy {
 	public static final String TAG = "EventProxy";
 
 	public static final int STATUS_TENTATIVE = 0;
@@ -51,7 +49,7 @@ public class EventProxy extends KrollProxy
 	protected String calendarID;
 	protected KrollDict extendedProperties = new KrollDict();
 
-	protected String recurrenceDate, recurrenceExceptionRule, recurrenceExceptionDate;
+	protected String recurrenceRule, recurrenceDate, recurrenceExceptionRule, recurrenceExceptionDate;
 	protected Date lastDate;
 
 	public EventProxy()
@@ -167,8 +165,7 @@ public class EventProxy extends KrollProxy
 		return queryEvents(Events.CONTENT_URI, query, queryArgs, "dtstart ASC");
 	}
 
-	public static ArrayList<EventProxy> queryEventsBetweenDates(long date1, long date2, String query,
-																String[] queryArgs)
+	public static ArrayList<EventProxy> queryEventsBetweenDates(long date1, long date2, String query, String[] queryArgs)
 	{
 		ArrayList<EventProxy> events = new ArrayList<EventProxy>();
 		if (!CalendarProxy.hasCalendarPermissions()) {
@@ -409,75 +406,8 @@ public class EventProxy extends KrollProxy
 		return queryEventsBetweenDates(date1, date2, "calendar_id = ?", new String[]{ calendar.getId() });
 	}
 
-	private Object setValueFromCursorForColumn(Cursor cursor, String columnName, Object defaultValue)
-	{
-		int columnIndex = cursor.getColumnIndex(columnName);
-		if (columnIndex < 0) {
-			//there is no such column
-			Log.w(TAG, "No column with name '" + columnName + "' found. Setting a default value.");
-		} else {
-			try {
-				if (defaultValue instanceof String) {
-					return cursor.getString(columnIndex);
-				} else if (defaultValue instanceof Integer) {
-					return cursor.getInt(columnIndex);
-				}
-			} catch (Exception e) {
-				Log.w(TAG, "Value of column '" + columnName
-							   + "' type does not match required type. Setting a default value.");
-				e.printStackTrace();
-			}
-		}
-		return defaultValue;
-	}
-
-	private AttendeeProxy[] getAttendeeProxies()
-	{
-		AttendeeProxy[] result;
-		final String[] attendeeProjection = new String[] { CalendarContract.Attendees._ID,
-														   CalendarContract.Attendees.EVENT_ID,
-														   CalendarContract.Attendees.ATTENDEE_NAME,
-														   CalendarContract.Attendees.ATTENDEE_EMAIL,
-														   CalendarContract.Attendees.ATTENDEE_TYPE,
-														   CalendarContract.Attendees.ATTENDEE_RELATIONSHIP,
-														   CalendarContract.Attendees.ATTENDEE_STATUS };
-		final String query = "(" + CalendarContract.Attendees.EVENT_ID + " = ?)";
-		final String[] args = new String[] { id };
-		ContentResolver contentResolver = TiApplication.getInstance().getContentResolver();
-		final Cursor cursor =
-			contentResolver.query(CalendarContract.Attendees.CONTENT_URI, attendeeProjection, query, args, null);
-		int index = 0;
-		if (cursor != null) {
-			result = new AttendeeProxy[cursor.getCount()];
-			while (cursor.moveToNext()) {
-				//safely create parameters for Attendee
-				String attendeeEmail =
-					setValueFromCursorForColumn(cursor, CalendarContract.Attendees.ATTENDEE_EMAIL, "").toString();
-				String attendeeName =
-					setValueFromCursorForColumn(cursor, CalendarContract.Attendees.ATTENDEE_NAME, "").toString();
-				int attendeeType = (Integer) setValueFromCursorForColumn(
-					cursor, CalendarContract.Attendees.ATTENDEE_TYPE, CalendarModule.ATTENDEE_STATUS_NONE);
-				int attendeeStatus = (Integer) setValueFromCursorForColumn(
-					cursor, CalendarContract.Attendees.ATTENDEE_STATUS, CalendarModule.ATTENDEE_STATUS_NONE);
-				int attendeeRelationship = (Integer) setValueFromCursorForColumn(
-					cursor, CalendarContract.Attendees.ATTENDEE_RELATIONSHIP, CalendarModule.RELATIONSHIP_NONE);
-				//create a proxy instance
-				AttendeeProxy proxyForRow =
-					new AttendeeProxy(attendeeEmail, attendeeName, attendeeType, attendeeStatus, attendeeRelationship);
-				//add the proxy to the result array
-				result[index++] = proxyForRow;
-			}
-		} else {
-			result = new AttendeeProxy[0];
-		}
-		return result;
-	}
-
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.method @Kroll.getProperty
 	public ReminderProxy[] getReminders()
-	// clang-format on
 	{
 		ArrayList<ReminderProxy> reminders = ReminderProxy.getRemindersForEvent(this);
 		return reminders.toArray(new ReminderProxy[reminders.size()]);
@@ -495,17 +425,8 @@ public class EventProxy extends KrollProxy
 		return ReminderProxy.createReminder(this, minutes, method);
 	}
 
-	@Kroll.method
-	RecurrenceRuleProxy createRecurrenceRule(KrollDict data)
-	{
-		return new RecurrenceRuleProxy(data);
-	}
-
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.method @Kroll.getProperty
 	public AlertProxy[] getAlerts()
-	// clang-format on
 	{
 		ArrayList<AlertProxy> alerts = AlertProxy.getAlertsForEvent(this);
 		return alerts.toArray(new AlertProxy[alerts.size()]);
@@ -518,20 +439,14 @@ public class EventProxy extends KrollProxy
 		return AlertProxy.createAlert(this, minutes);
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public String getId()
-	// clang-format on
 	{
 		return id;
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public String getTitle()
-	// clang-format on
 	{
 		return title;
 	}
@@ -544,7 +459,6 @@ public class EventProxy extends KrollProxy
 
 	@Kroll.getProperty @Kroll.method
 	public String getDescription()
-	// clang-format on
 	{
 		return description;
 	}
@@ -557,7 +471,6 @@ public class EventProxy extends KrollProxy
 
 	@Kroll.getProperty @Kroll.method
 	public String getLocation()
-	// clang-format on
 	{
 		return location;
 	}
@@ -570,7 +483,6 @@ public class EventProxy extends KrollProxy
 
 	@Kroll.getProperty @Kroll.method
 	public Date getBegin()
-	// clang-format on
 	{
 		return begin;
 	}
@@ -585,7 +497,6 @@ public class EventProxy extends KrollProxy
 
 	@Kroll.getProperty @Kroll.method
 	public Date getEnd()
-	// clang-format on
 	{
 		if (rrule != null) {
 			return new Date(begin.getTime() + duration);
@@ -619,11 +530,8 @@ public class EventProxy extends KrollProxy
 		duration = finish.getTime() - start.getTime();
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public boolean getAllDay()
-	// clang-format on
 	{
 		return allDay;
 	}
@@ -636,7 +544,6 @@ public class EventProxy extends KrollProxy
 
 	@Kroll.getProperty @Kroll.method
 	public boolean getHasAlarm()
-	// clang-format on
 	{
 		return hasAlarm;
 	}
@@ -649,70 +556,48 @@ public class EventProxy extends KrollProxy
 
 	@Kroll.getProperty @Kroll.method
 	public boolean getHasExtendedProperties()
-	// clang-format on
 	{
 		return hasExtendedProperties;
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public int getStatus()
-	// clang-format on
 	{
 		return status;
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public int getVisibility()
-	// clang-format on
 	{
 		return visibility;
 	}
 
-	public void setRecurrenceRules(String rrule, int calendarID)
+	@Kroll.getProperty @Kroll.method
+	public String getRecurrenceRule()
 	{
-		RecurrenceRuleProxy[] result = new RecurrenceRuleProxy[] {};
-		if (rrule != null) {
-			result = new RecurrenceRuleProxy[] { new RecurrenceRuleProxy(rrule, calendarID, begin) };
-		}
-		setProperty(TiC.PROPERTY_RECURRENCE_RULES, result);
+		return recurrenceRule;
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public String getRecurrenceDate()
-	// clang-format on
 	{
 		return recurrenceDate;
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public String getRecurrenceExceptionRule()
-	// clang-format on
 	{
 		return recurrenceExceptionRule;
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public String getRecurrenceExceptionDate()
-	// clang-format on
 	{
 		return recurrenceExceptionDate;
 	}
 
-	// clang-format off
-	@Kroll.method
-	@Kroll.getProperty
+	@Kroll.getProperty @Kroll.method
 	public Date getLastDate()
-	// clang-format on
 	{
 		return lastDate;
 	}
@@ -731,16 +616,14 @@ public class EventProxy extends KrollProxy
 
 	@Kroll.getProperty @Kroll.method
 	public KrollDict getExtendedProperties()
-	// clang-format on
 	{
 		KrollDict extendedProperties = new KrollDict();
 		if (!CalendarProxy.hasCalendarPermissions()) {
 			return extendedProperties;
 		}
 		ContentResolver contentResolver = TiApplication.getInstance().getContentResolver();
-		Cursor extPropsCursor =
-			contentResolver.query(Uri.parse(getExtendedPropertiesUri()), new String[] { "name", "value" },
-								  "event_id = ?", new String[] { getId() }, null);
+		Cursor extPropsCursor = contentResolver.query(Uri.parse(getExtendedPropertiesUri()),
+			new String[] { "name", "value" }, "event_id = ?", new String[] { getId() }, null);
 
 		while (extPropsCursor.moveToNext()) {
 			String name = extPropsCursor.getString(0);
@@ -758,9 +641,8 @@ public class EventProxy extends KrollProxy
 			return null;
 		}
 		ContentResolver contentResolver = TiApplication.getInstance().getContentResolver();
-		Cursor extPropsCursor =
-			contentResolver.query(Uri.parse(getExtendedPropertiesUri()), new String[] { "value" },
-								  "event_id = ? and name = ?", new String[] { getId(), name }, null);
+		Cursor extPropsCursor = contentResolver.query(Uri.parse(getExtendedPropertiesUri()), new String[] { "value" },
+			"event_id = ? and name = ?", new String[] { getId(), name }, null);
 
 		if (extPropsCursor != null && extPropsCursor.getCount() > 0) {
 			extPropsCursor.moveToNext();
@@ -792,7 +674,7 @@ public class EventProxy extends KrollProxy
 
 		Uri extPropsUri = Uri.parse(getExtendedPropertiesUri());
 		Cursor results = contentResolver.query(extPropsUri, new String[] { "name" }, "name = ? AND event_id = ?",
-											   new String[] { name, getId() }, null);
+			new String[] { name, getId() }, null);
 
 		ContentValues values = new ContentValues();
 		values.put("name", name);
