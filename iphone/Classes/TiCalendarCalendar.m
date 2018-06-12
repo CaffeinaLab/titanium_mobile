@@ -24,6 +24,7 @@
   if (self = [super _initWithPageContext:context]) {
     module = [module_ retain];
     calendar = [calendar_ retain];
+    DebugLog(@"Calendar IDENTIFIER from Ti.Calendar.Calendar %@", calendar.calendarIdentifier);
     calendarId = [calendar calendarIdentifier];
   }
 
@@ -90,6 +91,9 @@
     NSPredicate *predicate = [ourStore predicateForEventsWithStartDate:date1
                                                                endDate:date2
                                                              calendars:[NSArray arrayWithObject:[self calendar]]];
+    DebugLog(@"Calendar in Ti.Calendar.Calendar _fetchAllEventsbetweenDate %@", [self calendar]);
+    DebugLog(@"Store in Ti.Calendar.Calendar _fetchAllEventsbetweenDate %@", [self ourStore]);
+    DebugLog(@"Calendar in Ti.Calendar.Calendar ID _fetchAllEventsbetweenDate %@", calendarId);
     return [ourStore eventsMatchingPredicate:predicate];
   }
   return NULL;

@@ -10,369 +10,386 @@
 #import "CalendarModule.h"
 #import "TiCalendarCalendar.h"
 
+#pragma mark - Backwards compatibility for pre-iOS 6.0
+
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < __IPHONE_6_0
+//TODO: Should we warn that they need to update to the latest XCode if this is happening?
+#define EKAuthorizationStatusNotDetermined 0
+#define EKAuthorizationStatusRestricted 1
+#define EKAuthorizationStatusDenied 2
+#define EKAuthorizationStatusAuthorized 3
+
+enum {
+    EKEntityTypeEvent,
+    EKEntityTypeReminder
+};
+typedef NSUInteger EKEntityType;
+
+typedef void(^EKEventStoreRequestAccessCompletionHandler)(BOOL granted, NSError *error);
+
+
+@protocol EKEventStoreIOS6Support <NSObject>
+@optional
++ (NSInteger)authorizationStatusForEntityType:(EKEntityType)entityType;
+- (void)requestAccessToEntityType:(EKEntityType)entityType completion:(EKEventStoreRequestAccessCompletionHandler)completion;
+@end
+
+#endif
+
 @implementation CalendarModule
 
 #pragma mark - internal methods
 
-- (EKEventStore *)store
+-(EKEventStore*)store
 {
-  if (store == nil) {
-    store = [[EKEventStore alloc] init];
-  }
+    if (store == nil) {
+        store = [[EKEventStore alloc] init];
+    }
   if (store == NULL) {
     DebugLog(@"[WARN] Could not access EventStore. ");
   } else {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(eventStoreChanged:) name:EKEventStoreChangedNotification object:nil];
   }
-  return store;
+    return store;
 }
 
-- (NSArray *)allEventKitCalendars
+-(NSArray*)allEventKitCalendars
 {
-  if (![NSThread isMainThread]) {
+    if (![NSThread isMainThread]) {
     __block id result = nil;
-    TiThreadPerformOnMainThread(^{
-      result = [[self allEventKitCalendars] retain];
-    },
-        YES);
+    TiThreadPerformOnMainThread(^{result = [[self allEventKitCalendars] retain];}, YES);
     return [result autorelease];
   }
-  EKEventStore *ourStore = [self store];
-  if (ourStore == NULL) {
-    DebugLog(@"Could not instantiate an event of the event store.");
-    return nil;
-  }
-  return [ourStore calendarsForEntityType:EKEntityTypeEvent];
+    EKEventStore* ourStore = [self store];
+    if (ourStore  == NULL) {
+        DebugLog(@"Could not instantiate an event of the event store.");
+        return nil;
+        
+    }
+    return [ourStore calendarsForEntityType:EKEntityTypeEvent];
 }
 
-- (NSString *)apiName
+-(NSString*)apiName
 {
-  return @"Ti.Calendar";
+    return @"Ti.Calendar";
 }
 
-- (void)startup
+-(void)startup
 {
-  [super startup];
-  store = NULL;
+    [super startup];
+    store = NULL;
 }
 
-- (void)eventStoreChanged:(NSNotification *)notification
+-(void) eventStoreChanged:(NSNotification*)notification
 {
-  if ([self _hasListeners:@"change"]) {
-    [self fireEvent:@"change" withObject:nil];
-  }
+    if([self _hasListeners:@"change"]) {
+        [self fireEvent:@"change" withObject:nil];
+    }
 }
+
 
 #pragma mark - Internal Memory Management
 
-- (void)dealloc
+-(void)dealloc
 {
   RELEASE_TO_NIL(store);
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [super dealloc];
+  
 }
 
-- (void)didReceiveMemoryWarning:(NSNotification *)notification
+-(void)didReceiveMemoryWarning:(NSNotification*)notification
 {
   [super didReceiveMemoryWarning:notification];
 }
 
 #pragma mark - Public API's
 
-- (NSArray *)allCalendars
+-(NSArray*)allCalendars
 {
-  if (![NSThread isMainThread]) {
+    if (![NSThread isMainThread]) {
     __block id result = nil;
-    TiThreadPerformOnMainThread(^{
-      result = [[self allCalendars] retain];
-    },
-        YES);
+    TiThreadPerformOnMainThread(^{result = [[self allCalendars] retain];}, YES);
     return [result autorelease];
   }
 
-  NSArray *calendars_ = [self allEventKitCalendars];
-
-  NSMutableArray *calendars = [NSMutableArray arrayWithCapacity:[calendars_ count]];
-  for (EKCalendar *calendar_ in calendars_) {
-    TiCalendarCalendar *calendar = [[[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar_ module:self] autorelease];
-    [calendars addObject:calendar];
-  }
-
-  return calendars;
-}
-
-- (NSArray *)allEditableCalendars
-{
-  if (![NSThread isMainThread]) {
-    __block id result = nil;
-    TiThreadPerformOnMainThread(^{
-      result = [[self allEditableCalendars] retain];
-    },
-        YES);
-    return [result autorelease];
-  }
-
-  NSArray *calendars_ = [self allEventKitCalendars];
-
-  NSMutableArray *editableCalendars = [NSMutableArray array];
-  for (EKCalendar *calendar_ in calendars_) {
-    if ([calendar_ allowsContentModifications]) {
-      TiCalendarCalendar *calendar = [[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar_ module:self];
-      [editableCalendars addObject:calendar];
+    NSArray* calendars_ = [self allEventKitCalendars];
+    
+    NSMutableArray* calendars = [NSMutableArray arrayWithCapacity:[calendars_ count]];
+    for (EKCalendar* calendar_ in calendars_) {
+        TiCalendarCalendar* calendar = [[[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar_ module:self] autorelease];
+        [calendars addObject:calendar];
     }
-  }
-  return editableCalendars;
+    
+    return calendars;
 }
 
-- (TiCalendarCalendar *)getCalendarById:(id)arg
+-(NSArray*)allEditableCalendars
 {
-  ENSURE_SINGLE_ARG(arg, NSString);
-
-  if (![NSThread isMainThread]) {
+    if (![NSThread isMainThread]) {
     __block id result = nil;
-    TiThreadPerformOnMainThread(^{
-      result = [[self getCalendarById:arg] retain];
-    },
-        YES);
+    TiThreadPerformOnMainThread(^{result = [[self allEditableCalendars] retain];}, YES);
     return [result autorelease];
   }
+    
+    NSArray* calendars_ = [self allEventKitCalendars];
+    
+    NSMutableArray* editableCalendars = [NSMutableArray array];
+    for (EKCalendar* calendar_ in calendars_) {
+        if ([calendar_ allowsContentModifications]) {
+            TiCalendarCalendar* calendar = [[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar_ module:self];
+            [editableCalendars addObject:calendar];
+        }
+    }
+    return editableCalendars;
+}
 
-  EKEventStore *ourStore = [self store];
-  if (ourStore == NULL) {
-    DebugLog(@"Could not instantiate an event of the event store.");
-    return nil;
+
+-(TiCalendarCalendar*)getCalendarById:(id)arg
+{
+    ENSURE_SINGLE_ARG(arg, NSString);
+        
+    if (![NSThread isMainThread]) {
+        __block id result = nil;
+        TiThreadPerformOnMainThread(^{result = [[self getCalendarById:arg] retain];}, YES);
+        return [result autorelease];
+    }
+        
+    EKEventStore* ourStore = [self store];
+    if (ourStore  == NULL) {
+        DebugLog(@"Could not instantiate an event of the event store.");
+        return nil;
+    }
+    EKCalendar* calendar_ = NULL;
+    if ([TiUtils isIOS8OrGreater]) {
+        //Instead of getting calendar by identifier, have to get all and check for match
+        //not optimal but best way to fix non existing shared calendar error
+        NSArray *allCalendars = [ourStore calendarsForEntityType:EKEntityTypeEvent];
+        for (EKCalendar *cal in allCalendars) {
+            if ([cal.calendarIdentifier isEqualToString:arg]) {
+                calendar_ = cal;
+                break;
+            }
+        }
+    }
+    else {
+        calendar_ = [ourStore calendarWithIdentifier:arg];
+    }
+    if (calendar_ == NULL) {
+        return NULL;
+    }
+    TiCalendarCalendar* calendar = [[[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar_ module:self] autorelease];
+    return calendar;
+}
+
+
+-(TiCalendarCalendar*)defaultCalendar
+{
+    if (![NSThread isMainThread]) {
+    __block id result = nil;
+    TiThreadPerformOnMainThread(^{result = [[self defaultCalendar] retain];}, YES);
+    return [result autorelease];
   }
-  EKCalendar *calendar_ = NULL;
+    
+    EKEventStore* ourStore = [self store];
+    if (ourStore  == NULL) {
+        DebugLog(@"Could not instantiate an event of the event store.");
+        return nil;
+        
+    }
+    EKCalendar* calendar_ = [ourStore defaultCalendarForNewEvents];
+    if (calendar_ == NULL) {
+        return nil;
+    }
+    TiCalendarCalendar* calendar = [[[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar_ module:self] autorelease];    return calendar;
+}
 
-  //Instead of getting calendar by identifier, have to get all and check for match
-  //not optimal but best way to fix non existing shared calendar error
-  NSArray *allCalendars = [ourStore calendarsForEntityType:EKEntityTypeEvent];
-  for (EKCalendar *cal in allCalendars) {
-    if ([cal.calendarIdentifier isEqualToString:arg]) {
-      calendar_ = cal;
+-(void) requestAuthorization:(id)args forEntityType:(EKEntityType)entityType
+{
+    ENSURE_SINGLE_ARG(args, KrollCallback);
+    KrollCallback * callback = args;
+    NSString * errorStr = nil;
+    int code = 0;
+    BOOL doPrompt = NO;
+    
+    long int permissions = [EKEventStore authorizationStatusForEntityType:entityType];
+    switch (permissions) {
+        case EKAuthorizationStatusNotDetermined:
+            doPrompt = YES;
+            break;
+        case EKAuthorizationStatusAuthorized:
+            break;
+        case EKAuthorizationStatusDenied:
+            code = EKAuthorizationStatusDenied;
+            errorStr = @"The user has denied access to events in Calendar.";
       break;
+        case EKAuthorizationStatusRestricted:
+            code = EKAuthorizationStatusRestricted;
+            errorStr = @"The user is unable to allow access to events in Calendar.";
+        default:
+            break;
     }
-  }
-
-  if (calendar_ == NULL) {
-    return NULL;
-  }
-  TiCalendarCalendar *calendar = [[[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar_ module:self] autorelease];
-  return calendar;
-}
-
-- (TiCalendarCalendar *)defaultCalendar
-{
-  if (![NSThread isMainThread]) {
-    __block id result = nil;
-    TiThreadPerformOnMainThread(^{
-      result = [[self defaultCalendar] retain];
-    },
-        YES);
-    return [result autorelease];
-  }
-
-  EKEventStore *ourStore = [self store];
-  if (ourStore == NULL) {
-    DebugLog(@"Could not instantiate an event of the event store.");
-    return nil;
-  }
-  EKCalendar *calendar_ = [ourStore defaultCalendarForNewEvents];
-  if (calendar_ == NULL) {
-    return nil;
-  }
-  TiCalendarCalendar *calendar = [[[TiCalendarCalendar alloc] _initWithPageContext:[self executionContext] calendar:calendar_ module:self] autorelease];
-  return calendar;
-}
-
-- (void)requestAuthorization:(id)args forEntityType:(EKEntityType)entityType
-{
-  ENSURE_SINGLE_ARG(args, KrollCallback);
-  KrollCallback *callback = args;
-  NSString *errorStr = nil;
-  int code = 0;
-  BOOL doPrompt = NO;
-
-  long int permissions = [EKEventStore authorizationStatusForEntityType:entityType];
-  switch (permissions) {
-  case EKAuthorizationStatusNotDetermined:
-    doPrompt = YES;
-    break;
-  case EKAuthorizationStatusAuthorized:
-    break;
-  case EKAuthorizationStatusDenied:
-    code = EKAuthorizationStatusDenied;
-    errorStr = @"The user has denied access to events in Calendar.";
-    break;
-  case EKAuthorizationStatusRestricted:
-    code = EKAuthorizationStatusRestricted;
-    errorStr = @"The user is unable to allow access to events in Calendar.";
-  default:
-    break;
-  }
-
-  if (!doPrompt) {
-    NSDictionary *propertiesDict = [TiUtils dictionaryWithCode:code message:errorStr];
-    NSArray *invocationArray = [[NSArray alloc] initWithObjects:&propertiesDict count:1];
-
-    [callback call:invocationArray thisObject:self];
-    [invocationArray release];
-    return;
-  }
-  TiThreadPerformOnMainThread(^() {
-    EKEventStore *ourstore = [self store];
-    [ourstore requestAccessToEntityType:EKEntityTypeEvent
-                             completion:^(BOOL granted, NSError *error) {
-                               NSDictionary *propertiesDict;
-                               if (error == nil) {
-                                 NSString *errorMsg = granted ? nil : @"The user has denied access to events in Calendar.";
-                                 propertiesDict = [TiUtils dictionaryWithCode:(granted ? 0 : 1)message:errorMsg];
-                               } else {
-                                 propertiesDict = [TiUtils dictionaryWithCode:[error code] message:[TiUtils messageFromError:error]];
-                               }
-                               KrollEvent *invocationEvent = [[KrollEvent alloc] initWithCallback:callback eventObject:propertiesDict thisObject:self];
-                               [[callback context] enqueue:invocationEvent];
-                               RELEASE_TO_NIL(invocationEvent);
-                             }];
-  },
-      NO);
+  
+    if (!doPrompt) {
+        NSDictionary * propertiesDict = [TiUtils dictionaryWithCode:code message:errorStr];
+        NSArray * invocationArray = [[NSArray alloc] initWithObjects:&propertiesDict count:1];
+        
+        [callback call:invocationArray thisObject:self];
+        [invocationArray release];
+        return;
+    }
+    TiThreadPerformOnMainThread(^(){
+    
+        EKEventStore* ourstore = [self store];
+        [ourstore requestAccessToEntityType:EKEntityTypeEvent
+                                 completion:^(BOOL granted, NSError *error){
+                                     NSDictionary* propertiesDict;
+                                     if (error == nil) {
+                                         NSString* errorMsg = granted ? nil : @"The user has denied access to events in Calendar.";
+                                         propertiesDict = [TiUtils dictionaryWithCode:(granted ? 0 : 1) message:errorMsg];
+                                     } else {
+                                         propertiesDict = [TiUtils dictionaryWithCode:[error code] message:[TiUtils messageFromError:error]];
+                                     }
+                                     KrollEvent * invocationEvent = [[KrollEvent alloc] initWithCallback:callback eventObject:propertiesDict thisObject:self];
+                                     [[callback context] enqueue:invocationEvent];
+                   RELEASE_TO_NIL(invocationEvent);
+                                 }];
+    }, NO);
 }
 
 #pragma mark - Public API
 
-- (NSNumber *)hasCalendarPermissions:(id)unused
+-(NSNumber*) hasCalendarPermissions:(id)unused
 {
-  NSString *calendarPermission = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSCalendarsUsageDescription"];
-
-  if ([TiUtils isIOS10OrGreater] && !calendarPermission) {
-    NSLog(@"[ERROR] iOS 10 and later requires the key \"NSCalendarsUsageDescription\" inside the plist in your tiapp.xml when accessing the native calendar. Please add the key and re-run the application.");
-  }
-
-  return NUMBOOL([EKEventStore authorizationStatusForEntityType:EKEntityTypeEvent] == EKAuthorizationStatusAuthorized);
+    NSString *calendarPermission = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSCalendarsUsageDescription"];
+    
+    if ([TiUtils isIOS10OrGreater] && !calendarPermission) {
+        NSLog(@"[ERROR] iOS 10 and later requires the key \"NSCalendarsUsageDescription\" inside the plist in your tiapp.xml when accessing the native calendar. Please add the key and re-run the application.");
+    }
+    
+    return NUMBOOL([EKEventStore authorizationStatusForEntityType:EKEntityTypeEvent] == EKAuthorizationStatusAuthorized);
 }
 
-- (void)requestEventsAuthorization:(id)args
+-(void) requestEventsAuthorization:(id)args
 {
-  DEPRECATED_REPLACED(@"Calendar.requestEventsAuthorization()", @"5.1.0", @"Calendar.requestCalendarPermissions()");
-  [self requestCalendarPermissions:args];
+    DEPRECATED_REPLACED(@"Calendar.requestEventsAuthorization()", @"5.1.0", @"Calendar.requestCalendarPermissions()");
+    [self requestCalendarPermissions:args];
 }
 
-- (void)requestCalendarPermissions:(id)args
+-(void) requestCalendarPermissions:(id)args
 {
-  ENSURE_SINGLE_ARG(args, KrollCallback);
-  [self requestAuthorization:args forEntityType:EKEntityTypeEvent];
+    ENSURE_SINGLE_ARG(args, KrollCallback);
+    [self requestAuthorization:args forEntityType:EKEntityTypeEvent];
 }
 
 // Not documented + used, yet. Part of the 5.2.0 release.
-- (void)requestRemindersPermissions:(id)args
+-(void) requestRemindersPermissions:(id)args
 {
-  ENSURE_SINGLE_ARG(args, KrollCallback);
-  [self requestAuthorization:args forEntityType:EKEntityTypeReminder];
+    ENSURE_SINGLE_ARG(args, KrollCallback);
+    [self requestAuthorization:args forEntityType:EKEntityTypeReminder];
 }
 
-- (NSNumber *)eventsAuthorization
+-(NSNumber*) eventsAuthorization
 {
-  DEPRECATED_REPLACED(@"Calendar.eventsAuthorization", @"5.2.0", @"Calendar.calendarAuthorization");
-  return [self calendarAuthorization];
+    DEPRECATED_REPLACED(@"Calendar.eventsAuthorization", @"5.2.0", @"Calendar.calendarAuthorization");
+    return [self calendarAuthorization];
 }
 
-- (NSNumber *)calendarAuthorization
+-(NSNumber*) calendarAuthorization
 {
-  EKAuthorizationStatus result = [EKEventStore authorizationStatusForEntityType:EKEntityTypeEvent];
-  return [NSNumber numberWithInteger:result];
+    EKAuthorizationStatus result = [EKEventStore authorizationStatusForEntityType:EKEntityTypeEvent];
+    return [NSNumber numberWithInteger:result];
 }
 
-- (NSString *)createCalendar:(id)args
+-(NSString*) createCalendar:(id)args
 {
-  ENSURE_SINGLE_ARG(args, NSDictionary);
+    ENSURE_SINGLE_ARG(args, NSDictionary);
+    
+    NSString* name = nil;
+    ENSURE_ARG_FOR_KEY(name, args, @"name", NSString);
 
-  NSString *name = nil;
-  ENSURE_ARG_FOR_KEY(name, args, @"name", NSString);
-
-  EKEventStore *ourStore = [self store];
-
-  if (ourStore == nil) {
-    DebugLog(@"[ERROR] Could not instantiate an event of the event store.");
-    return nil;
-  }
-
-  EKCalendar *calendar = [EKCalendar calendarForEntityType:EKEntityTypeEvent eventStore:ourStore];
-
-  EKSource *theSource = nil;
-
-  // First of all, search for and iCloud account
-  for (EKSource *source in [ourStore sources]) {
-    if ([source sourceType] == EKSourceTypeCalDAV && [[source title] isEqualToString:@"iCloud"]) {
-      theSource = source;
-      break;
+    EKEventStore* ourStore = [self store];
+    
+    if (ourStore == nil) {
+        DebugLog(@"Could not instantiate an event of the event store.");
+        return nil;
     }
-  }
 
-  // If iCloud is off, create new calendar in Locale because we can't write other calendars (like Gmail or Yahoo!)
-  for (EKSource *source in [ourStore sources]) {
-    if ([source sourceType] == EKSourceTypeLocal) {
-      theSource = source;
-      break;
+    EKCalendar *calendar = [EKCalendar calendarForEntityType:EKEntityTypeEvent eventStore:ourStore];
+
+    EKSource *theSource = nil;
+
+    // First of all, search for and iCloud account
+    for (EKSource *source in ourStore.sources) {
+        if (source.sourceType == EKSourceTypeCalDAV && [source.title isEqualToString:@"iCloud"]) {
+            theSource = source;
+            break;
+        }
     }
-  }
+    
+    // If iCloud is off, create new calendar in Locale because we can't write other calendars (like Gmail or Yahoo!)
+    for (EKSource *source in ourStore.sources) {
+        if (source.sourceType == EKSourceTypeLocal) {
+            theSource = source;
+            break;
+        }
+    }
+    
+    // Otherwise, just rely on default calendar (but it will crash, we are sure about this)
+    if (theSource == nil) {
+        theSource = [[ourStore defaultCalendarForNewEvents] source];
+    }
 
-  // Otherwise, just rely on default calendar (but it will crash, we are sure about this)
-  if (theSource == nil) {
-    theSource = [[ourStore defaultCalendarForNewEvents] source];
-  }
+    if (theSource == nil) {
+        NSLog(@"Error creating calendar: No available source");
+        return;
+    }
+    
+    calendar.source = theSource;
+    calendar.title = name;
 
-  if (theSource == nil) {
-    NSLog(@"[ERROR] Error creating calendar: No source available");
-    return;
-  }
-
-  calendar.source = theSource;
-  calendar.title = name;
-
-  NSError *error = nil;
-  BOOL result = NO;
-
-  // But we are smart and we try-catch all the things to avoid an application fatal crash
-  @try {
-    result = [ourStore saveCalendar:calendar commit:YES error:&error];
-  } @catch (NSException *exception) {
-    NSLog(@"[ERROR] Error creating calendar: %@.", [exception reason]);
-  }
-
-  if (result == NO) {
-    NSLog(@"[ERROR] Error creating calendar: %@.", error);
-  }
-
-  return calendar.calendarIdentifier;
+    NSError* error = nil;
+    BOOL result;
+    
+    // But we are smart and we try-catch all the things to avoid an application fatal crash
+    @try {
+        result = [ourStore saveCalendar:calendar commit:YES error:&error];
+    } @catch (NSException *exception) {
+        NSLog(@"Error creating calendar: %@.", exception.reason);
+    }
+    
+    if (result == false) {
+        NSLog(@"Error creating calendar: %@.", error);
+    }
+    
+    return calendar.calendarIdentifier;
 }
 
-- (NSNumber *)deleteCalendarById:(id)arg
+-(BOOL) deleteCalendarById:(id)arg
 {
-  ENSURE_SINGLE_ARG(arg, NSString);
+    ENSURE_SINGLE_ARG(arg, NSString);
 
-  EKEventStore *ourStore = [self store];
-  EKCalendar *calendar = [ourStore calendarWithIdentifier:arg];
+    EKEventStore* ourStore = [self store];
+    EKCalendar *calendar = [ourStore calendarWithIdentifier:arg];
 
-  if (calendar) {
-    NSError *error = nil;
-    BOOL result = [ourStore removeCalendar:calendar commit:YES error:&error];
-    if (result) {
-      return @YES;
-    } else {
-      NSLog(@"Deleting calendar failed: %@.", error);
-      return @NO;
+    if (calendar) {
+        NSError *error = nil;
+        BOOL result = [ourStore removeCalendar:calendar commit:YES error:&error];
+        if (result) {
+            return YES;
+        } else {
+            NSLog(@"Deleting calendar failed: %@.", error);
+            return NO;
+        }
     }
-  }
-
-  return @NO;
 }
 
 #pragma mark - Properties
 
-MAKE_SYSTEM_PROP(STATUS_NONE, EKEventStatusNone);
-MAKE_SYSTEM_PROP(STATUS_CONFIRMED, EKEventStatusConfirmed);
-MAKE_SYSTEM_PROP(STATUS_TENTATIVE, EKEventStatusTentative);
-MAKE_SYSTEM_PROP(STATUS_CANCELED, EKEventStatusCanceled);
+MAKE_SYSTEM_PROP(STATUS_NONE,EKEventStatusNone);
+MAKE_SYSTEM_PROP(STATUS_CONFIRMED,EKEventStatusConfirmed);
+MAKE_SYSTEM_PROP(STATUS_TENTATIVE,EKEventStatusTentative);
+MAKE_SYSTEM_PROP(STATUS_CANCELED,EKEventStatusCanceled);
 MAKE_SYSTEM_PROP_DEPRECATED_REPLACED(STATUS_CANCELLED, EKEventStatusCanceled, @"Calendar.STATUS_CANCELLED", @"5.2.0", @"Calendar.STATUS_CANCELED")
 
 MAKE_SYSTEM_PROP(AVAILABILITY_NOTSUPPORTED, EKEventAvailabilityNotSupported);
