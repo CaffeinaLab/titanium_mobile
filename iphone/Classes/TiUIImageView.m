@@ -265,11 +265,22 @@ DEFINE_EXCEPTIONS
 
 - (void)animationCompleted:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context
 {
+    for (UIView *view in [self subviews]) {
+        // look for our alpha view which is the placeholder layer
+        if (view.alpha == 0) {
+            [view removeFromSuperview];
+            break;
+        }
+    }
+}
+
+- (UIViewContentMode)contentModeForImageView
+{
     BOOL aspectFill = [TiUtils boolValue:[self.proxy valueForKey:@"aspectFill"] def:NO];
     if (aspectFill) {
         return UIViewContentModeScaleAspectFill;
     } else {
-    
+        
         if (TiDimensionIsAuto(width) || TiDimensionIsAutoSize(width) || TiDimensionIsUndefined(width) ||
             TiDimensionIsAuto(height) || TiDimensionIsAutoSize(height) || TiDimensionIsUndefined(height)) {
             return UIViewContentModeScaleAspectFit;
@@ -278,23 +289,6 @@ DEFINE_EXCEPTIONS
         }
         
     }
-  }
-}
-
-- (UIViewContentMode)contentModeForImageView
-{
-  BOOL aspectFill = [TiUtils boolValue:[self.proxy valueForKey:@"aspectFill"] def:NO];
-  if (aspectFill) {
-      return UIViewContentModeScaleAspectFill;
-  } else {
-  
-      if (TiDimensionIsAuto(width) || TiDimensionIsAutoSize(width) || TiDimensionIsUndefined(width) ||
-          TiDimensionIsAuto(height) || TiDimensionIsAutoSize(height) || TiDimensionIsUndefined(height)) {
-          return UIViewContentModeScaleAspectFit;
-      } else {
-        return UIViewContentModeScaleToFill;
-      }
-  }     
 }
 
 - (void)updateContentMode

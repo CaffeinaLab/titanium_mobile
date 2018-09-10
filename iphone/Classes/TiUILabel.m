@@ -100,7 +100,6 @@
 #ifndef TI_USE_AUTOLAYOUT
     CGSize actualLabelSize = [[self label] sizeThatFits:CGSizeMake(initialLabelFrame.size.width, 0)];
     CGFloat height = actualLabelSize.height * heightMultiply;
-    
     UIControlContentVerticalAlignment alignment = verticalAlign;
     if (alignment == UIControlContentVerticalAlignmentFill) {
         //IOS7 layout issue fix with attributed string.
@@ -117,12 +116,12 @@
                 originX = (initialLabelFrame.size.width - actualLabelSize.width);
                 break;
             case NSTextAlignmentCenter:
-                originX = (initialLabelFrame.size.width - actualLabelSize.width)/2.0;
+                originX = (initialLabelFrame.size.width - actualLabelSize.width) / 2.0;
                 break;
             default:
                 break;
         }
-
+        
         if (originX < 0) {
             originX = 0;
         }
@@ -132,7 +131,7 @@
                 labelRect.origin.y = initialLabelFrame.size.height - height;
                 break;
             case UIControlContentVerticalAlignmentCenter:
-                labelRect.origin.y = (initialLabelFrame.size.height - height)/2;
+                labelRect.origin.y = (initialLabelFrame.size.height - height) / 2.0;
                 if (labelRect.origin.y < 0) {
                     labelRect.size.height = (initialLabelFrame.size.height - labelRect.origin.y);
                 }
@@ -143,53 +142,16 @@
                 }
                 break;
         }
-
+        
         [label setFrame:CGRectIntegral(labelRect)];
+    } else {
+        [label setFrame:initialLabelFrame];
     }
-  }
-  if (alignment != UIControlContentVerticalAlignmentFill && ([label numberOfLines] != 1)) {
-    CGFloat originX = 0;
-    switch (label.textAlignment) {
-    case NSTextAlignmentRight:
-      originX = (initialLabelFrame.size.width - actualLabelSize.width);
-      break;
-    case NSTextAlignmentCenter:
-      originX = (initialLabelFrame.size.width - actualLabelSize.width) / 2.0;
-      break;
-    default:
-      break;
+    
+    if ([self backgroundImageLayer] != nil && !CGRectIsEmpty(initialLabelFrame)) {
+        [self updateBackgroundImageFrameWithPadding];
     }
-
-    if (originX < 0) {
-      originX = 0;
-    }
-    CGRect labelRect = CGRectMake(originX, 0, actualLabelSize.width, actualLabelSize.height);
-    switch (alignment) {
-    case UIControlContentVerticalAlignmentBottom:
-      labelRect.origin.y = initialLabelFrame.size.height - actualLabelSize.height;
-      break;
-    case UIControlContentVerticalAlignmentCenter:
-      labelRect.origin.y = (initialLabelFrame.size.height - actualLabelSize.height) / 2;
-      if (labelRect.origin.y < 0) {
-        labelRect.size.height = (initialLabelFrame.size.height - labelRect.origin.y);
-      }
-      break;
-    default:
-      if (initialLabelFrame.size.height < actualLabelSize.height) {
-        labelRect.size.height = initialLabelFrame.size.height;
-      }
-      break;
-    }
-
-    [label setFrame:CGRectIntegral(labelRect)];
-  } else {
-    [label setFrame:initialLabelFrame];
-  }
-
-  if ([self backgroundImageLayer] != nil && !CGRectIsEmpty(initialLabelFrame)) {
-    [self updateBackgroundImageFrameWithPadding];
-  }
-  return;
+    return;
 #endif
 }
 
